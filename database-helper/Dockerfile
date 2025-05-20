@@ -23,4 +23,4 @@ COPY ./app/ ./app/
 EXPOSE 8000
 
 # Command to run the application with hot-reload
-CMD ["uv", "run", "python", "app/receive.py"]
+CMD ["uv", "run", "python", "-m", "app.main"]

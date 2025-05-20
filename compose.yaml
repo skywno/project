@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   producer:
+    container_name: producer
     build:
       context: ./producer
       dockerfile: Dockerfile
@@ -28,11 +29,69 @@ services:
       timeout: 10s
       retries: 5
     restart: unless-stopped
-  consumer:
+  consumer-1:
+    container_name: consumer-1
     build:
       context: ./consumer
       dockerfile: Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     volumes:
-      - ./consumer/src:/app/src
+      - ./consumer/app:/app/app
     ports:
       - "8001:8000"
+    environment:
+      - CONSUMER_ID=1
+
+  consumer-2:
+    container_name: consumer-2
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./consumer/app:/app/app
+    ports:
+      - "8002:8000"
+    environment:
+      - CONUMSER_ID=2
+
+  database:
+    container_name: database
+    image: postgres:17.0
+    restart: unless-stopped
+    env_file:
+      - project.env
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+
+  database-migrations:
+    image: flyway/flyway:10
+    env_file:
+      - project.env
+    depends_on:
+      - database
+    volumes:
+      - ./database-migrations:/flyway/sql
+    command: -connectRetries=60 -baselineOnMigrate=true migrate
+
+  database-helper:
+    container_name: database-helper
+    build:
+      context: ./database-helper
+      dockerfile: Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      database:
+        condition: service_started
+    env_file:
+      - project.env
+    volumes:
+      - ./database-helper/app:/app/app
+      
+volumes:
+  postgresql_data:

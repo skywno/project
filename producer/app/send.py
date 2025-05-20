@@ -21,8 +21,11 @@ class RabbitMQProducer:
                 pika.ConnectionParameters(host=self.host, credentials=self.credentials)
             )
             self.channel = self.connection.channel()
-            self.channel.queue_declare(queue=self.queue_name)
+            self.channel.exchange_declare("producer_exchange", exchange_type='fanout')
+            self.channel.exchange_declare("consumer_exchange", exchange_type='topic')
+            self.channel.exchange_bind("consumer_exchange", "producer_exchange", routing_key= "service.consumer.request")
             logger.info(f"Connected to RabbitMQ at {self.host}")
+            
         except pika.exceptions.AMQPConnectionError as e:
             logger.error(f"Failed to connect to RabbitMQ: {e}")
             raise
@@ -34,8 +37,8 @@ class RabbitMQProducer:
         
         try:
             self.channel.basic_publish(
-                exchange='',
-                routing_key=self.queue_name,
+                exchange='producer_exchange',
+                routing_key='service.consumer.request',
                 body=message
             )
             logger.info(f" [x] Sent message: {message}")
