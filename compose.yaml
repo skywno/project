@@ -92,6 +92,21 @@ services:
       - project.env
     volumes:
       - ./database-helper/app:/app/app
-      
+  
+  controller:
+    container_name: controller
+    build:
+      context: ./controller
+      dockerfile: Dockerfile
+    depends_on: 
+      rabbitmq:
+        condition: service_healthy
+    env_file:
+      - project.env
+    volumes:
+      - ./controller/app:/app/app
+    ports:
+      - "9000:8000"
+
 volumes:
   postgresql_data:
