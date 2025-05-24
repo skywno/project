@@ -7,10 +7,10 @@ import time
 from app.producer import RabbitMQProducer
 from app.consumer import RabbitMQConsumer
 import logging
-from app.models import ExchangeInfo, TicketInfo
+from app.models import ExchangeInfo, TicketInfo, ServiceList
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 app = FastAPI()
 
 
@@ -84,7 +84,7 @@ message_task = None
 
 @app.post("/task")
 async def task():
-    services = client.get_service_list()
+    services : ServiceList = client.get_service_list()
     if len(services.types) == 0:
         return {"message": "No services found"}
     logging.info(f"Services: {services.types}")
@@ -101,5 +101,5 @@ async def task():
 
     message = create_message_payload(ticket_id)
     await rabbitmq_consumer.add_queue(queue_name)
-    rabbitmq_producer.send_message(exchange_name, routing_key, message)
+    rabbitmq_producer.send_message(exchange_name, ticket_id, routing_key, message)
     return {"message": "Task created"}

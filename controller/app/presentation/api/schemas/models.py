@@ -2,10 +2,11 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 
 class ServiceRegisterRequest(BaseModel):
-    service_id: str
     service_name: str
     service_type: str
-
+    service_description: str
+    service_url: str
+    
 class PublishInfo(BaseModel):
     exchange_name: str
     routing_key: str
@@ -21,6 +22,9 @@ class ExchangeBase(BaseModel):
     auto_delete: bool = False
     arguments: Dict[str, Any] = Field(default_factory=dict) # Additional arguments for the exchange
 
+class ServiceRegisterResponse(BaseModel):
+    message: str
+    queue_name: str
 
 class ExchangeCreate(ExchangeBase):
     pass

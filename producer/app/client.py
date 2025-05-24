@@ -14,8 +14,9 @@ class ControllerClient:
     def get_service_list(self) -> ServiceList:
         try:
             response = httpx.get("http://controller:8000/service/types")
-            services = response.json()
-            return ServiceList(types=services.get("service_types"))
+            services:List[Dict] = response.json()
+            types = [service["service_type"] for service in services]
+            return ServiceList(types=types)
         except httpx.HTTPStatusError as e:
             logging.error(f"HTTPStatusError: {e.response.status_code} {e.response.text}")
             raise HTTPException(status_code=e.response.status_code, detail=e.response.text)

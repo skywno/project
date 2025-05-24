@@ -2,7 +2,7 @@
 import pika
 from typing import Optional
 import logging
-
+from pika.spec import BasicProperties
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -26,16 +26,22 @@ class RabbitMQProducer:
             logger.error(f"Failed to connect to RabbitMQ: {e}")
             raise
 
-    def send_message(self, exchange: str, routing_key: str, message: str) -> None:
+    def send_message(self, exchange: str, ticket_id: str, routing_key: str, message: str) -> None:
         """Send a message to the specified queue."""
         if not self.connection or not self.channel:
             self.connect()
         
         try:
+            properties = BasicProperties(
+                headers={
+                    "x-ticket-id": ticket_id
+                }
+            )
             self.channel.basic_publish(
                 exchange=exchange,
                 routing_key=routing_key,
-                body=message
+                body=message,
+                properties=properties
             )
             logger.info(f" [x] Sent message: {message}")
         except Exception as e:

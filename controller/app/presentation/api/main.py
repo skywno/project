@@ -2,34 +2,41 @@ from fastapi import FastAPI, Depends, HTTPException
 from app.presentation.api.dependencies import get_queue_service
 from app.application.services.queue_service import QueueService
 from app.presentation.api.schemas.models import PublishInfo, TicketInfo
+from app.presentation.api.schemas.models import ServiceRegisterRequest, ServiceRegisterResponse
+from typing import List
 
 import logging
 import httpx
-import asyncio
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-services_types = set()
+service_types = dict()
 ticket_id = 0
 
 http_client = httpx.AsyncClient()
 
-@app.post("/service/register/{service_type}")
-async def register_service(service_type: str, queue_service: QueueService = Depends(get_queue_service)):
+@app.get("/health")
+async def check_health():
+    return {"status": 200}
+
+@app.post("/service/register")
+async def register_service(req: ServiceRegisterRequest, queue_service: QueueService = Depends(get_queue_service)) -> ServiceRegisterResponse:
     try:
-        queue_name = queue_service.create_service_request_queue(service_type)
-        services_types.add(service_type)
-        return {"message": "Service registered successfully", "queue_name": queue_name}
+        service_types[req.service_type] = req.model_dump()
+        queue_name = queue_service.create_service_request_queue(req.service_type)
+        body = {"message": "Service registered successfully", "queue_name": queue_name}
+        return ServiceRegisterResponse(**body)
     except Exception as e:
         logging.error(f"Error registering service: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/service/types")
-async def get_service_types():
+async def get_service_types() -> List[ServiceRegisterRequest]:
     try:
-        return {"service_types": list(services_types)}
+        return list(service_types.values())
     except Exception as e:
         logging.error(f"Error getting service types: {e}")
         raise HTTPException(status_code=500, detail=str(e))

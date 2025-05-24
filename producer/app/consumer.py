@@ -3,7 +3,7 @@ import json
 import logging
 import functools
 import pika
-
+from pika.channel import Channel
 from pika.adapters.asyncio_connection import AsyncioConnection
 
 # Configure logging
@@ -16,10 +16,10 @@ class RabbitMQConsumer:
     """
     def __init__(self, host: str = 'rabbitmq', port: int = 5672):
         self._connection: AsyncioConnection | None = None
-        self._channel = None
+        self._channel: Channel | None = None
         self._host = host
         self._port = port
-        self._queues = {}  # queue_name -> consumer_tag
+        self._queues: Dict[str, str] = {}  # queue_name -> consumer_tag
         self._consuming = False 
         self.credentials = pika.PlainCredentials('admin', 'admin')
 
@@ -44,7 +44,6 @@ class RabbitMQConsumer:
                         on_close_callback=self.on_connection_closed,
                         custom_ioloop=asyncio.get_event_loop() # Ensure pika uses the FastAPI loop
                 )
-                await self._connection.connected.wait() # Wait for connection to establish
                 logger.info("RabbitMQ connection established.")
             except Exception as e:
                 logger.error(f"Failed to connect to RabbitMQ: {e}")
@@ -59,13 +58,12 @@ class RabbitMQConsumer:
     def on_connection_open_error(self, connection: AsyncioConnection, err: Exception):
         """Called if the connection could not be established."""
         logger.error(f"Connection failed: {err}")
-        connection.connected.set_exception(err)
 
     def on_connection_closed(self, connection: AsyncioConnection, reason: Exception):
         """Called when the connection to RabbitMQ is closed."""
         logger.warning(f"Connection closed: {reason}")
         self._channel = None
-        self._queues.clear()  # Clear all queue tracking
+        # Don't clear queues here, we'll try to reconnect them
         if self._consuming:
             logger.info("Attempting to reconnect in 5 seconds...")
             asyncio.get_event_loop().call_later(5, lambda: asyncio.create_task(self.connect()))
@@ -75,16 +73,39 @@ class RabbitMQConsumer:
         logger.info("Channel opened")
         self._channel = channel
         self._channel.add_on_close_callback(self.on_channel_closed)
-
+        
+        # If we have existing queues, reconnect them
+        if self._queues and self._consuming:
+            self._reconnect_queues()
 
     def on_channel_closed(self, channel, reason):
         """Called when the channel is closed."""
         logger.warning(f"Channel closed: {reason}")
         self._channel = None
-        self._queues.clear()  # Clear all queue tracking
+        # Don't clear queues here, we'll try to reconnect them
         # If the connection is still open, try to reopen the channel
         if self._connection and self._connection.is_open:
             self._connection.channel(on_open_callback=self.on_channel_open)
+
+    async def _reconnect_queues(self):
+        """Reconnect to all previously registered queues."""
+        if not self._channel or not self._channel.is_open:
+            return
+
+        logger.info("Reconnecting to existing queues...")
+        for queue_name in list(self._queues.keys()):
+            try:
+                # Start consuming from the queue again
+                consumer_tag = self._channel.basic_consume(
+                    queue=queue_name,
+                    on_message_callback=self.on_message_callback,
+                    auto_ack=False
+                )
+                # Update the consumer tag
+                self._queues[queue_name] = consumer_tag
+                logger.info(f"Reconnected to queue: {queue_name}")
+            except Exception as e:
+                logger.error(f"Failed to reconnect to queue {queue_name}: {e}")
 
     async def add_queue(self, queue_name: str):
         """Add a new queue to consume from."""
@@ -93,7 +114,7 @@ class RabbitMQConsumer:
             if not self._channel:
                 raise Exception("Failed to establish channel")
 
-        if queue_name in self._queues:
+        if queue_name in self._queues.keys():
             logger.info(f"Already consuming from queue: {queue_name}")
             return
 
@@ -228,12 +249,3 @@ class RabbitMQConsumer:
             self._connection = None
         logger.info("RabbitMQ consumer stopped.")
 
-
-    def on_connection_closed(self, connection: AsyncioConnection, reason: Exception):
-        """Called when the connection to RabbitMQ is closed."""
-        logger.warning(f"Connection closed: {reason}")
-        self._channel = None
-        self._queues.clear()  # Clear all queue tracking
-        if self._consuming:
-            logger.info("Attempting to reconnect in 5 seconds...")
-            asyncio.get_event_loop().call_later(5, lambda: asyncio.create_task(self.connect()))
