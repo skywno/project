@@ -1,10 +1,7 @@
 import httpx
 import sys
 import logging
-import json
 from typing import Dict, Tuple
-import pika
-import asyncio  
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
