@@ -7,9 +7,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class RabbitMQProducer:
-    def __init__(self, host: str = 'rabbitmq', queue_name: str = 'hello'):
+    def __init__(self, host: str = 'rabbitmq'):
         self.host = host
-        self.queue_name = queue_name
         self.connection = None
         self.channel = None
         self.credentials = pika.PlainCredentials('admin', 'admin')
@@ -21,24 +20,21 @@ class RabbitMQProducer:
                 pika.ConnectionParameters(host=self.host, credentials=self.credentials)
             )
             self.channel = self.connection.channel()
-            self.channel.exchange_declare("producer_exchange", exchange_type='fanout')
-            self.channel.exchange_declare("consumer_exchange", exchange_type='topic')
-            self.channel.exchange_bind("consumer_exchange", "producer_exchange", routing_key= "service.consumer.request")
             logger.info(f"Connected to RabbitMQ at {self.host}")
             
         except pika.exceptions.AMQPConnectionError as e:
             logger.error(f"Failed to connect to RabbitMQ: {e}")
             raise
 
-    def send_message(self, message: str) -> None:
+    def send_message(self, exchange: str, routing_key: str, message: str) -> None:
         """Send a message to the specified queue."""
         if not self.connection or not self.channel:
             self.connect()
         
         try:
             self.channel.basic_publish(
-                exchange='producer_exchange',
-                routing_key='service.consumer.request',
+                exchange=exchange,
+                routing_key=routing_key,
                 body=message
             )
             logger.info(f" [x] Sent message: {message}")

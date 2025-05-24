@@ -1,7 +1,15 @@
 from fastapi import FastAPI, BackgroundTasks
-from app.send import RabbitMQProducer
 import asyncio
 import json
+from app.client import ControllerClient
+import random
+import time
+from app.producer import RabbitMQProducer
+from app.consumer import RabbitMQConsumer
+import logging
+from app.models import ExchangeInfo, TicketInfo
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -10,18 +18,31 @@ app = FastAPI()
 async def root():
     return {"message": "Hello World"}
 
-sending_message = False
-message_task = None
-producer = RabbitMQProducer()
+consumer_task: asyncio.Task | None = None
 
-async def send_message_task():
-    message_count = 0
-    while sending_message:
-        message = create_message_payload(message_count)
-        print(message)
-        producer.send_message(message)
-        message_count += 1
-        await asyncio.sleep(1)
+rabbitmq_consumer = RabbitMQConsumer()
+rabbitmq_producer = RabbitMQProducer()
+client = ControllerClient()
+
+@app.on_event("startup")
+async def startup_event():
+    """FastAPI startup event to initiate RabbitMQ consumer."""
+    global consumer_task
+    logger.info("FastAPI startup event: Starting RabbitMQ consumer.")
+    consumer_task = asyncio.create_task(rabbitmq_consumer.start_consuming())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """FastAPI shutdown event to gracefully stop RabbitMQ consumer."""
+    logger.info("FastAPI shutdown event: Stopping RabbitMQ consumer.")
+    if consumer_task:
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except asyncio.CancelledError:
+            logger.info("RabbitMQ consumer task cancelled.")
+    await rabbitmq_consumer.stop_consuming()
+    logger.info("FastAPI shutdown complete.")
 
 
 def create_message_payload(ticket_id):
@@ -35,19 +56,50 @@ def create_message_payload(ticket_id):
 
     return json.dumps(data)
 
-@app.post("/start_sending")
-async def start_sending(background_tasks: BackgroundTasks):
-    global sending_message, message_task
-    sending_message = True
-    message_task = asyncio.create_task(send_message_task())
-    return {"message": "Sending messages..."}
 
-@app.post("/stop_sending")
-async def stop_sending():
-    global sending_message, message_task
-    sending_message = False
-    if message_task:
-        message_task.cancel()
-        message_task = None
-    producer.close()
-    return {"message": "Stopped sending messages"}
+sending_message = False
+message_task = None
+
+
+# async def send_message_task():
+#     pass
+
+# @app.post("/start_sending")
+# async def start_sending(background_tasks: BackgroundTasks):
+#     global sending_message, message_task
+#     sending_message = True
+#     message_task = asyncio.create_task(send_message_task())
+#     return {"message": "Sending messages..."}
+
+
+# @app.post("/stop_sending")
+# async def stop_sending():
+#     global sending_message, message_task
+#     sending_message = False
+#     if message_task:
+#         message_task.cancel()
+#         message_task = None
+#     client.close()
+#     return {"message": "Stopped sending messages"}
+
+@app.post("/task")
+async def task():
+    services = client.get_service_list()
+    if len(services.types) == 0:
+        return {"message": "No services found"}
+    logging.info(f"Services: {services.types}")
+    random.shuffle(services.types)
+    service_type = services.types[0]
+    exchange_info: ExchangeInfo = client.get_exchange(service_type)
+    ticket_info: TicketInfo = client.get_ticket_number_and_queue()
+
+    exchange_name = exchange_info.exchange
+    routing_key = exchange_info.routing_key
+
+    ticket_id = ticket_info.ticket_id
+    queue_name = ticket_info.queue_name
+
+    message = create_message_payload(ticket_id)
+    await rabbitmq_consumer.add_queue(queue_name)
+    rabbitmq_producer.send_message(exchange_name, routing_key, message)
+    return {"message": "Task created"}

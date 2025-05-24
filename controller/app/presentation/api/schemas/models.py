@@ -6,6 +6,14 @@ class ServiceRegisterRequest(BaseModel):
     service_name: str
     service_type: str
 
+class PublishInfo(BaseModel):
+    exchange_name: str
+    routing_key: str
+
+class TicketInfo(BaseModel):
+    ticket_id: int
+    queue_name: str
+
 class ExchangeBase(BaseModel):
     name: str
     type: str = "topic" # e.g., "direct", "topic", "fanout", "headers"
@@ -59,7 +67,7 @@ class BindingBase(BaseModel):
     destination_type: str # "queue" or "exchange"
     destination_name: str
     routing_key: str = ""
-    arguments: Dict[str, Any] = Field(default_factory=dict)
+    arguments: Dict[str, Any] | None = Field(default_factory=dict)
 
 class BindingCreate(BindingBase):
     pass
@@ -67,8 +75,8 @@ class BindingCreate(BindingBase):
 class BindingRead(BindingBase):
     # RabbitMQ API doesn't return a simple ID for bindings,
     # so we'll use the defining characteristics.
-    vhost: str
-    properties_key: str # A unique identifier used by RabbitMQ internally for bindings
+    vhost: str | None = None
+    properties_key: str | None = None # A unique identifier used by RabbitMQ internally for bindings
     class Config:
         from_attributes = True
 

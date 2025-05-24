@@ -147,25 +147,16 @@ class RabbitMQMgmtClient:
 import pika
 
 class RabbitMQPikaClient:
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(RabbitMQPikaClient, cls).__new__(cls)
-        return cls._instance
 
     def __init__(self, host: str = None, port: int = None, username: str = None, password: str = None):
-        # Only initialize if not already initialized
-        if not hasattr(self, 'initialized'):
-            self.connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=host,
-                    port=port,
-                    credentials=pika.PlainCredentials(username, password)
-                )
+        self.connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host=host,
+                port=port,
+                credentials=pika.PlainCredentials(username, password)
             )
-            self.channel = self.connection.channel()
-            self.initialized = True
+        )
+        self.channel = self.connection.channel()
 
     def close(self):
         self.connection.close()
