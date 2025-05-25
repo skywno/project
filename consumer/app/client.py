@@ -10,7 +10,7 @@ logging.basicConfig(
 http_client = httpx.AsyncClient()
 
 CONTROLLER_URL = "http://controller:8000"
-SERVICE_URL = "http://consumer:8000"
+SERVICE_URL = "http://consumer-1:8000"
 SERVICE_TYPE = "consumer"
 
 async def check_service_health():
