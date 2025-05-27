@@ -5,6 +5,7 @@ import functools
 import pika
 from pika.channel import Channel
 from pika.adapters.asyncio_connection import AsyncioConnection
+from typing import Dict
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,234 +20,291 @@ class RabbitMQConsumer:
         self._channel: Channel | None = None
         self._host = host
         self._port = port
-        self._queues: Dict[str, str] = {}  # queue_name -> consumer_tag
-        self._consuming = False 
+        self._closing = False
+        self.should_reconnect = False
         self.credentials = pika.PlainCredentials('admin', 'admin')
+        self._consumer_tags = {} # queue_name -> consumer_tag
+        self._reconnect_task = None
 
-    async def connect(self):
+    def _connect(self):
         """Connect to RabbitMQ."""
         if self._connection and self._connection.is_open:
             logger.info("RabbitMQ connection already open.")
             return
-        while not self._connection:
-            try:
-                logger.info(f"Connecting to RabbitMQ at {self._host}:{self._port}")
-                parameters = pika.ConnectionParameters(
-                    host=self._host,
-                    port=self._port,
-                    credentials=self.credentials,
-                    heartbeat=60 # Keep connection alive
-                )
-                self._connection = AsyncioConnection(
-                        parameters=parameters,
-                        on_open_callback=self.on_connection_open,
-                        on_open_error_callback=self.on_connection_open_error,
-                        on_close_callback=self.on_connection_closed,
-                        custom_ioloop=asyncio.get_event_loop() # Ensure pika uses the FastAPI loop
-                )
-                logger.info("RabbitMQ connection established.")
-            except Exception as e:
-                logger.error(f"Failed to connect to RabbitMQ: {e}")
-                logger.info(f"wait 10 secondss for the rabbitmq to run")
-                await asyncio.sleep(10)
 
-    def on_connection_open(self, connection: AsyncioConnection):
-        """Called when the connection to RabbitMQ is established."""
-        logger.info("Connection opened, creating channel...")
+        logger.info(f"Connecting to RabbitMQ at {self._host}:{self._port}")
+        parameters = pika.ConnectionParameters(
+            host=self._host,
+            port=self._port,
+            credentials=self.credentials,
+            heartbeat=60 # Keep connection alive
+        )
+        self._connection = AsyncioConnection(
+                parameters=parameters,
+                on_open_callback=self.on_connection_open,
+                on_open_error_callback=self.on_connection_open_error,
+                on_close_callback=self.on_connection_closed,
+                custom_ioloop=asyncio.get_event_loop() # Ensure pika uses the FastAPI loop
+        )
+
+        logger.info("RabbitMQ connection established.")
+
+
+    def on_connection_open(self, connection):
+        """This method is called by pika once the connection to RabbitMQ has
+        been established. It passes the handle to the connection object in
+        case we need it, but in this case, we'll just mark it unused.
+
+        :param pika.adapters.asyncio_connection.AsyncioConnection _unused_connection:
+           The connection
+
+        """
+        logger.info('Connection opened')
+        self._connection = connection
+        self.open_channel(connection)
+
+    def on_connection_open_error(self, _unused_connection, err):
+        """This method is called by pika if the connection to RabbitMQ
+        can't be established.
+
+        :param pika.adapters.asyncio_connection.AsyncioConnection _unused_connection:
+           The connection
+        :param Exception err: The error
+
+        """
+        logger.error('Connection open failed: %s', err)
+        self.reconnect()
+
+    def on_connection_closed(self, _unused_connection, reason):
+        """This method is invoked by pika when the connection to RabbitMQ is
+        closed unexpectedly. Since it is unexpected, we will reconnect to
+        RabbitMQ if it disconnects.
+
+        :param pika.connection.Connection connection: The closed connection obj
+        :param Exception reason: exception representing reason for loss of
+            connection.
+
+        """
+        self._channel = None
+        self.reconnect()
+
+
+    def reconnect(self):
+        self.should_reconnect = True
+        self.stop()
+
+    def open_channel(self, connection):
+        """Open a new channel with RabbitMQ by issuing the Channel.Open RPC
+        command. When RabbitMQ responds that the channel is open, the
+        on_channel_open callback will be invoked by pika.
+
+        """
+        logger.info('Creating a new channel')
         connection.channel(on_open_callback=self.on_channel_open)
 
-    def on_connection_open_error(self, connection: AsyncioConnection, err: Exception):
-        """Called if the connection could not be established."""
-        logger.error(f"Connection failed: {err}")
-
-    def on_connection_closed(self, connection: AsyncioConnection, reason: Exception):
-        """Called when the connection to RabbitMQ is closed."""
-        logger.warning(f"Connection closed: {reason}")
-        self._channel = None
-        # Don't clear queues here, we'll try to reconnect them
-        if self._consuming:
-            logger.info("Attempting to reconnect in 5 seconds...")
-            asyncio.get_event_loop().call_later(5, lambda: asyncio.create_task(self.connect()))
 
     def on_channel_open(self, channel):
-        """Called when the channel is opened."""
-        logger.info("Channel opened")
+        """This method is invoked by pika when the channel has been opened.
+        The channel object is passed in so we can make use of it.
+
+        Since the channel is now open, we'll declare the exchange to use.
+
+        :param pika.channel.Channel channel: The channel object
+
+        """
+        logger.info('Channel opened')
         self._channel = channel
+        self.add_on_channel_close_callback()
+        self.add_on_cancel_callback()
+
+
+    def add_on_channel_close_callback(self):
+        """This method tells pika to call the on_channel_closed method if
+        RabbitMQ unexpectedly closes the channel.
+
+        """
+        logger.info('Adding channel close callback')
         self._channel.add_on_close_callback(self.on_channel_closed)
-        
-        # If we have existing queues, reconnect them
-        if self._queues and self._consuming:
-            self._reconnect_queues()
+
 
     def on_channel_closed(self, channel, reason):
-        """Called when the channel is closed."""
-        logger.warning(f"Channel closed: {reason}")
-        self._channel = None
-        # Don't clear queues here, we'll try to reconnect them
-        # If the connection is still open, try to reopen the channel
-        if self._connection and self._connection.is_open:
-            self._connection.channel(on_open_callback=self.on_channel_open)
+        """Invoked by pika when RabbitMQ unexpectedly closes the channel.
+        Channels are usually closed if you attempt to do something that
+        violates the protocol, such as re-declare an exchange or queue with
+        different parameters. In this case, we'll close the connection
+        to shutdown the object.
 
-    async def _reconnect_queues(self):
-        """Reconnect to all previously registered queues."""
-        if not self._channel or not self._channel.is_open:
-            return
+        :param pika.channel.Channel: The closed channel
+        :param Exception reason: why the channel was closed
 
-        logger.info("Reconnecting to existing queues...")
-        for queue_name in list(self._queues.keys()):
-            try:
-                # Start consuming from the queue again
-                consumer_tag = self._channel.basic_consume(
-                    queue=queue_name,
-                    on_message_callback=self.on_message_callback,
-                    auto_ack=False
-                )
-                # Update the consumer tag
-                self._queues[queue_name] = consumer_tag
-                logger.info(f"Reconnected to queue: {queue_name}")
-            except Exception as e:
-                logger.error(f"Failed to reconnect to queue {queue_name}: {e}")
+        """
+        logger.warning('Channel %i was closed: %s', channel, reason)
+        # self.close_connection()
 
-    async def add_queue(self, queue_name: str):
-        """Add a new queue to consume from."""
-        if not self._channel or not self._channel.is_open:
-            await self.connect()
-            if not self._channel:
-                raise Exception("Failed to establish channel")
 
-        if queue_name in self._queues.keys():
-            logger.info(f"Already consuming from queue: {queue_name}")
-            return
+    def add_on_cancel_callback(self):
+        """Add a callback that will be invoked if RabbitMQ cancels the consumer
+        for some reason. If RabbitMQ does cancel the consumer,
+        on_consumer_cancelled will be invoked by pika.
 
+        """
+        logger.info('Adding consumer cancellation callback')
+        self._channel.add_on_cancel_callback(self.on_consumer_cancelled)
+
+
+    def on_consumer_cancelled(self, method_frame):
+        """Invoked by pika when RabbitMQ sends a Basic.Cancel for a consumer
+        receiving messages.
+
+        :param pika.frame.Method method_frame: The Basic.Cancel frame
+
+        """
+        logger.info('Consumer was cancelled remotely, shutting down: %r',
+                    method_frame)
+        # if self._channel:
+        #     self._channel.close()
+
+
+    def start_consuming(self, queue_name):
+        """This method sets up the consumer by first calling
+        add_on_cancel_callback so that the object is notified if RabbitMQ
+        cancels the consumer. It then issues the Basic.Consume RPC command
+        which returns the consumer tag that is used to uniquely identify the
+        consumer with RabbitMQ. We keep the value to use it when we want to
+        cancel consuming. The on_message method is passed in as a callback pika
+        will invoke when a message is fully received.
+
+        """
+        logger.info('Issuing consumer related RPC commands')
+        self._consumer_tags[queue_name] = self._channel.basic_consume(
+            queue_name, self.on_message)
+
+
+    def on_message(self, _unused_channel, basic_deliver, properties, body):
+        """Invoked by pika when a message is delivered from RabbitMQ. The
+        channel is passed for your convenience. The basic_deliver object that
+        is passed in carries the exchange, routing key, delivery tag and
+        a redelivered flag for the message. The properties passed in is an
+        instance of BasicProperties with the message properties and the body
+        is the message that was sent.
+
+        :param pika.channel.Channel _unused_channel: The channel object
+        :param pika.Spec.Basic.Deliver: basic_deliver method
+        :param pika.Spec.BasicProperties: properties
+        :param bytes body: The message body
+
+        """
+        logger.info('Received message # %s from %s: %s',
+                    basic_deliver.delivery_tag, properties.app_id, body)
+        logger.info('Acknowledging message %s', basic_deliver.delivery_tag)
+        self._channel.basic_ack(basic_deliver.delivery_tag)
+
+
+    def stop_consuming(self, queue_name):
+        """Tell RabbitMQ that you would like to stop consuming by sending the
+        Basic.Cancel RPC command.
+
+        """
+        if self._channel:
+            logger.info('Sending a Basic.Cancel RPC command to RabbitMQ')
+            cb = functools.partial(
+                self.on_cancelok, userdata=self._consumer_tags[queue_name])
+            self._channel.basic_cancel(self._consumer_tags[queue_name], cb)
+
+
+    def on_cancelok(self, _unused_frame, userdata):
+        """This method is invoked by pika when RabbitMQ acknowledges the
+        cancellation of a consumer.
+
+        :param pika.frame.Method _unused_frame: The Basic.CancelOk frame
+        :param str|unicode userdata: Extra user data (consumer tag)
+
+        """
+        logger.info(
+            'RabbitMQ acknowledged the cancellation of the consumer: %s',
+            userdata)
+
+    def run(self):
+        """Run the example consumer by connecting to RabbitMQ and then
+        starting the IOLoop to block and allow the AsyncioConnection to operate.
+
+        """
+        self._connection = self._connect()
+
+
+    def stop(self):
+        """Cleanly shutdown the connection to RabbitMQ by stopping the consumer
+        with RabbitMQ.
+
+        """
+        self.close_connection()
+
+
+    def close_connection(self):
+        if self._connection and (self._connection.is_closing or self._connection.is_closed):
+            logger.info('Connection is closing or already closed')
+        elif self._connection:
+            logger.info('Closing connection')
+            self.close_channel()
+            self._connection.close()
+        else:
+            logger.info('Connection is not open')
+
+    def close_channel(self):
+        """Call to close the channel with RabbitMQ cleanly by issuing the
+        Channel.Close RPC command.
+
+        """
+        if self._channel:
+            logger.info('Closing the channel')
+            self._channel.close()
+
+
+class ReconnectingRabbitMQConsumer():
+    def __init__(self, host: str = 'rabbitmq', port: int = 5672):
+        self._host = host
+        self._port = port
+        self._reconnect_delay = 0
+        self._consumer = RabbitMQConsumer(host, port)
+        self.queue_names = []
+
+    async def run(self):
+        self._consumer.run()
         try:
-            # We don't need to declare the queue here, because it is handled by the controller
-            # Declare the queue
-            # cb = functools.partial(self.on_queue_declared, userdata=queue_name)
-            # self._channel.queue_declare(
-            #     queue=queue_name,
-            #     durable=True,
-            #     callback=cb
-            # )
-            
-            # We don't need to bind the queue to the exchange here, because it is handled by the controller
-            # Bind the queue to the exchange
-            # cb = functools.partial(self.on_queue_bound, userdata=queue_name)
-            # self._channel.queue_bind(
-            #     queue_name,
-            #     self.EXCHANGE,
-            #     routing_key=self.ROUTING_KEY,
-            #     callback=cb
-            # )
-
-            # Start consuming from the queue
-            consumer_tag = self._channel.basic_consume(
-                queue=queue_name,
-                on_message_callback=self.on_message_callback,
-                auto_ack=False
-            )
-            
-            self._queues[queue_name] = consumer_tag
-            logger.info(f"Started consuming from queue: {queue_name}")
-        except Exception as e:
-            logger.error(f"Failed to add queue {queue_name}: {e}")
+            while True:
+                await self._maybe_reconnect()
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            logger.info('Consumer task cancelled, cleaning up...')
+            self.stop()
             raise
-
-    # def on_queue_declared(self, frame, userdata):
-    #     """Called when the queue is successfully declared.
-    #     userdata is the queue name.
-    #     """
-    #     logger.info(f"Queue '{userdata}' declared.")
-    
-    # def on_queue_bound(self, frame, userdata):
-    #     """Invoked by pika when the Queue.Bind method has completed. At this
-    #     point we will set the prefetch count for the channel.
-
-    #     :param pika.frame.Method _unused_frame: The Queue.BindOk response frame
-    #     :param str|unicode userdata: Extra user data (queue name)
-
-    #     """
-    #     logger.info(f'Queue bound: {userdata}')
-
-    def on_message_callback(self, channel, method, properties, body):
-        """
-        Callback function for processing incoming messages.
-        This function is called for each message received.
-        """
-        queue_name = method.routing_key
-        logger.info(f"Received message from queue {queue_name}: {body.decode()}")
-        try:
-            # message_data = json.loads(body.decode())
-            message_data = body.decode()
-            # Process the message here.
-            # For demonstration, let's just print it.
-            logger.info(f"Processed data from queue {queue_name}: {message_data}")
-
-            # Acknowledge the message to RabbitMQ
-            channel.basic_ack(delivery_tag=method.delivery_tag)
-        except json.JSONDecodeError:
-            logger.error(f"Failed to decode JSON message from queue {queue_name}: {body.decode()}")
-            # Nack the message if it's malformed, don't re-queue for now
-            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         except Exception as e:
-            logger.error(f"Error processing message from queue {queue_name}: {e}", exc_info=True)
-            # Nack the message, potentially re-queue based on error handling
-            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+            logger.error(f'Error in consumer loop: {e}')
 
-    async def remove_queue(self, queue_name: str):
-        """Stop consuming from a specific queue."""
-        if queue_name not in self._queues:
-            logger.warning(f"Not consuming from queue: {queue_name}")
-            return
+    def stop(self):
+        self._consumer.stop()
 
-        if self._channel and self._channel.is_open:
-            try:
-                await asyncio.to_thread(
-                    self._channel.basic_cancel,
-                    self._queues[queue_name]
-                )
-                del self._queues[queue_name]
-                logger.info(f"Stopped consuming from queue: {queue_name}")
-            except Exception as e:
-                logger.error(f"Failed to remove queue {queue_name}: {e}")
-                raise
-    async def start_consuming(self):
-        """Start the Pika I/O loop to consume messages."""
-        if not self._connection or not self._connection.is_open:
-            await self.connect()
+    async def _maybe_reconnect(self):
+        if self._consumer.should_reconnect:
+            self._consumer.stop()
+            reconnect_delay = self._get_reconnect_delay()
+            logger.info('Reconnecting after %d seconds', reconnect_delay)
+            await asyncio.sleep(reconnect_delay)
+            self._consumer = RabbitMQConsumer(self._host, self._port)
+            self._consumer.run()
+            for queue_name in self.queue_names:
+                self._consumer.start_consuming(queue_name)
 
-        # The Pika AsyncioConnection integrates with the asyncio event loop.
-        # Once connected, the callbacks will be triggered.
-        # We don't need to call _connection.ioloop.start() explicitly
-        # because FastAPI is already running the asyncio event loop.
-        self._consuming = True
+    def start_consuming(self, queue_name):
+        self.queue_names.append(queue_name)
+        self._consumer.start_consuming(queue_name) 
 
-        logger.info("RabbitMQ consumer is running in background.")
-        # Keep the consumer active indefinitely by just letting it run
-        # within the FastAPI event loop.
-        while self._consuming and self._connection and self._connection.is_open:
-            await asyncio.sleep(1) # Keep the task alive, allow other tasks to run
+    def stop_consuming(self, queue_name):
+        self.queue_names.remove(queue_name)
+        self._consumer.stop_consuming(queue_name)
 
-    async def stop_consuming(self):
-        """Stop consuming messages and close the connection."""
-        self._consuming = False
-        
-        # Cancel all consumers
-        if self._channel and self._channel.is_open:
-            for queue_name, consumer_tag in list(self._queues.items()):
-                try:
-                    await asyncio.to_thread(self._channel.basic_cancel, consumer_tag)
-                    logger.info(f"Cancelled consumer for queue: {queue_name}")
-                except Exception as e:
-                    logger.error(f"Error cancelling consumer for queue {queue_name}: {e}")
-            
-            self._queues.clear()
-            logger.info("Closing channel...")
-            await asyncio.to_thread(self._channel.close)
-            self._channel = None
-
-        if self._connection and self._connection.is_open:
-            logger.info("Closing connection...")
-            await asyncio.to_thread(self._connection.close)
-            self._connection = None
-        logger.info("RabbitMQ consumer stopped.")
-
+    def _get_reconnect_delay(self):
+        self._reconnect_delay += 1
+        if self._reconnect_delay > 30:
+            self._reconnect_delay = 30
+        return self._reconnect_delay

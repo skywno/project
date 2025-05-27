@@ -5,7 +5,7 @@ from app.client import ControllerClient
 import random
 import time
 from app.producer import RabbitMQProducer
-from app.consumer import RabbitMQConsumer
+from app.consumer import ReconnectingRabbitMQConsumer
 import logging
 from app.models import ExchangeInfo, TicketInfo, Service
 from typing import List
@@ -21,7 +21,7 @@ async def root():
 
 consumer_task: asyncio.Task | None = None
 
-rabbitmq_consumer = RabbitMQConsumer()
+rabbitmq_consumer = ReconnectingRabbitMQConsumer()
 rabbitmq_producer = RabbitMQProducer()
 client = ControllerClient()
 
@@ -30,7 +30,7 @@ async def startup_event():
     """FastAPI startup event to initiate RabbitMQ consumer."""
     global consumer_task
     logger.info("FastAPI startup event: Starting RabbitMQ consumer.")
-    consumer_task = asyncio.create_task(rabbitmq_consumer.start_consuming())
+    consumer_task = asyncio.create_task(rabbitmq_consumer.run())
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -41,8 +41,9 @@ async def shutdown_event():
         try:
             await consumer_task
         except asyncio.CancelledError:
-            logger.info("RabbitMQ consumer task cancelled.")
-    await rabbitmq_consumer.stop_consuming()
+            logger.info("Consumer task cancelled.")
+        except Exception as e:
+            logger.error(f"Error in consumer task: {e}")
     logger.info("FastAPI shutdown complete.")
 
 
@@ -100,6 +101,6 @@ async def task():
     queue_name = ticket_info.queue_name
 
     message = create_message_payload(ticket_id)
-    await rabbitmq_consumer.add_queue(queue_name)
+    rabbitmq_consumer.start_consuming(queue_name)
     rabbitmq_producer.send_message(exchange_name, ticket_id, routing_key, message)
     return {"message": "Task created"}
