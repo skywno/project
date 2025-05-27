@@ -33,6 +33,7 @@ def save_record(data: dict):
             (hstore_data,)
         )
         conn.commit()
+        logger.info("Record saved successfully")
     except Exception as e:
         logger.error(f"Database error: {e}")
         conn.rollback()

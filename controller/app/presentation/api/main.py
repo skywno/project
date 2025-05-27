@@ -101,7 +101,7 @@ async def create_ticket(queue_service: QueueService = Depends(get_queue_service)
     try:
         global ticket_id
         ticket_id += 1
-        queue_name = queue_service.create_queue_for_ticket(ticket_id)
+        queue_name = queue_service.get_queue_name_for_ticket(ticket_id)
         return TicketInfo(ticket_id=ticket_id, queue_name=queue_name)
     except Exception as e:
         logging.error(f"Error creating ticket: {e}")

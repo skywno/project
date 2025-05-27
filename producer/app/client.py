@@ -3,7 +3,7 @@ import logging
 
 from fastapi import HTTPException
 from typing import List, Dict
-from app.models import ServiceList, ExchangeInfo, TicketInfo
+from app.models import Service, ExchangeInfo, TicketInfo
 
 logging.basicConfig(level=logging.INFO)
 
@@ -11,12 +11,13 @@ logger = logging.getLogger(__name__)
 
 class ControllerClient:
 
-    def get_service_list(self) -> ServiceList:
+    def get_service_list(self) -> List[Service]:
         try:
             response = httpx.get("http://controller:8000/service/types")
             services:List[Dict] = response.json()
-            types = [service["service_type"] for service in services]
-            return ServiceList(types=types)
+
+            service_list = [Service(**service) for service in services]
+            return service_list
         except httpx.HTTPStatusError as e:
             logging.error(f"HTTPStatusError: {e.response.status_code} {e.response.text}")
             raise HTTPException(status_code=e.response.status_code, detail=e.response.text)

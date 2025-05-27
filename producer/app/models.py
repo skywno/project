@@ -1,8 +1,11 @@
 from pydantic import BaseModel
 from typing import List, Dict
 
-class ServiceList(BaseModel):
-    types: List[str]
+class Service(BaseModel):
+    service_url: str
+    service_name: str
+    service_type: str
+    service_description: str
 
 class ExchangeInfo(BaseModel):
     exchange: str

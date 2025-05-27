@@ -7,7 +7,8 @@ import time
 from app.producer import RabbitMQProducer
 from app.consumer import RabbitMQConsumer
 import logging
-from app.models import ExchangeInfo, TicketInfo, ServiceList
+from app.models import ExchangeInfo, TicketInfo, Service
+from typing import List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -84,12 +85,11 @@ message_task = None
 
 @app.post("/task")
 async def task():
-    services : ServiceList = client.get_service_list()
-    if len(services.types) == 0:
+    services : List[Service] = client.get_service_list()
+    if len(services) == 0:
         return {"message": "No services found"}
-    logging.info(f"Services: {services.types}")
-    random.shuffle(services.types)
-    service_type = services.types[0]
+    random.shuffle(services)
+    service_type = services[0].service_type
     exchange_info: ExchangeInfo = client.get_exchange(service_type)
     ticket_info: TicketInfo = client.get_ticket_number_and_queue()
 

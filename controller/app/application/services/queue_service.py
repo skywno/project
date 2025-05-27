@@ -57,7 +57,9 @@ class QueueService:
     
     def get_queue_name_for_ticket(self, ticket_id: int) -> str:
         """get queue name for a ticket ID."""
-        return f"ticket.{ticket_id}"
+        queue_name = f"ticket.{ticket_id}"
+        self.client.channel.queue_declare(queue=queue_name)
+        return queue_name
 
     def create_client_exchange_bound_to_service_exchange(self, service_type: str) -> PublishInfo:
         """Creates a client exchange and binds it to the service exchange."""

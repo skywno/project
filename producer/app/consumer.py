@@ -175,7 +175,8 @@ class RabbitMQConsumer:
         queue_name = method.routing_key
         logger.info(f"Received message from queue {queue_name}: {body.decode()}")
         try:
-            message_data = json.loads(body.decode())
+            # message_data = json.loads(body.decode())
+            message_data = body.decode()
             # Process the message here.
             # For demonstration, let's just print it.
             logger.info(f"Processed data from queue {queue_name}: {message_data}")
