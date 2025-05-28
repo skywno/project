@@ -1,12 +1,12 @@
 from fastapi import Depends
 from app.core.messaging.rabbitmq import RabbitMQPikaClient
 from app.application.services.queue_service import QueueService
-
+import os
 async def get_rabbitmq_client() -> RabbitMQPikaClient:
-    host = "rabbitmq"
-    port = "5672"
-    username = "admin"
-    password = "admin"
+    host = os.getenv("RABBITMQ_HOST")
+    port = os.getenv("RABBITMQ_PORT")
+    username = os.getenv("RABBITMQ_USERNAME")
+    password = os.getenv("RABBITMQ_PASSWORD")
     return RabbitMQPikaClient(host, port, username, password)
 
 
