@@ -2,6 +2,8 @@ import httpx
 import sys
 import logging
 from typing import Dict, Tuple
+import os
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -9,13 +11,13 @@ logging.basicConfig(
 )
 http_client = httpx.AsyncClient()
 
-CONTROLLER_URL = "http://controller:8000"
-SERVICE_URL = "http://consumer-1:8000"
+CONTROLLER_SERVICE_URL = os.getenv("CONTROLLER_SERVICE_URL") or "http://controller:8000"
+CONSUMER_SERVICE_URL = os.getenv("CONSUMER_SERVICE_URL") or "http://consumer-1:8000"
 SERVICE_TYPE = "consumer"
 
 async def check_service_health():
     try:
-        response = await http_client.get(f"{CONTROLLER_URL}/health")
+        response = await http_client.get(f"{CONTROLLER_SERVICE_URL}/health")
         if response.status_code == 200:
             return True
         else:
@@ -28,11 +30,11 @@ async def send_register_request_and_get_queue() -> str | None:
     body = {
         "service_name": "consumer",
         "service_type": SERVICE_TYPE,
-        "service_url": SERVICE_URL,
+        "service_url": CONSUMER_SERVICE_URL,
         "service_description": "Consumer service"
     }
     try:
-        response = await http_client.post(f"{CONTROLLER_URL}/service/register", json=body)
+        response = await http_client.post(f"{CONTROLLER_SERVICE_URL}/service/register", json=body)
         logging.info(f"Registered service: {response.json()}")
         return response.json()["queue_name"]
 
@@ -92,7 +94,7 @@ async def send_register_request_and_get_queue() -> str | None:
 
 async def get_exchange_and_routing_key(ticket_id: str) -> Tuple[str, str]:
     try:
-        response = await http_client.post(f"{CONTROLLER_URL}/service/exchange/{SERVICE_TYPE}/ticket/{ticket_id}")
+        response = await http_client.post(f"{CONTROLLER_SERVICE_URL}/service/exchange/{SERVICE_TYPE}/ticket/{ticket_id}")
         return response.json()["exchange_name"], response.json()["routing_key"]
     except Exception as e:
         logging.error(f"Error getting exchange: {e}")

@@ -3,12 +3,10 @@ import aio_pika
 import logging
 from app.client import get_exchange_and_routing_key
 
-RABBITMQ_URL = "amqp://admin:admin@rabbitmq:5672/"
-
 logger = logging.getLogger(__name__)
 
 class RabbitMQClient:
-    def __init__(self, url: str = RABBITMQ_URL):
+    def __init__(self, url: str = "amqp://admin:admin@rabbitmq:5672/"):
         self.url = url
         self.connection = None
     

@@ -3,12 +3,16 @@ from app.rabbitmq import RabbitMQClient, RabbitMQConsumer
 import logging
 from app.client import send_register_request_and_get_queue, check_service_health
 import asyncio
+import os
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-client = RabbitMQClient()
+RABBITMQ_URL = os.getenv("RABBITMQ_URL") or "amqp://admin:admin@rabbitmq:5672/"
+
+client = RabbitMQClient(RABBITMQ_URL)
 consumer = RabbitMQConsumer(client)
 
 @app.on_event("startup")

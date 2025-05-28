@@ -36,6 +36,8 @@ services:
     build:
       context: ./consumer
       dockerfile: Dockerfile
+    env_file:
+      - project.env
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -51,6 +53,8 @@ services:
     build:
       context: ./consumer
       dockerfile: Dockerfile
+    env_file:
+      - project.env
     depends_on:
       rabbitmq:
         condition: service_healthy
