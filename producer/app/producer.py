@@ -7,11 +7,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class RabbitMQProducer:
-    def __init__(self, host: str = 'rabbitmq'):
+    def __init__(self, host: str = 'rabbitmq', username: str = 'admin', password: str = 'admin'):
         self.host = host
         self.connection = None
         self.channel = None
-        self.credentials = pika.PlainCredentials('admin', 'admin')
+        self.credentials = pika.PlainCredentials(username, password)
 
     def connect(self) -> None:
         """Establish connection to RabbitMQ server."""

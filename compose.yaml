@@ -10,7 +10,9 @@ services:
       - ./producer/app:/app/app
     ports:
       - "8000:8000"
-
+    env_file:
+      - project.env
+      
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq

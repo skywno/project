@@ -15,14 +15,14 @@ class RabbitMQConsumer:
     """
     A class to manage the RabbitMQ connection and consumer.
     """
-    def __init__(self, host: str = 'rabbitmq', port: int = 5672):
+    def __init__(self, host: str = 'rabbitmq', port: int = 5672, username: str = 'admin', password: str = 'admin'):
         self._connection: AsyncioConnection | None = None
         self._channel: Channel | None = None
         self._host = host
         self._port = port
         self._closing = False
         self.should_reconnect = False
-        self.credentials = pika.PlainCredentials('admin', 'admin')
+        self.credentials = pika.PlainCredentials(username, password)
         self._consumer_tags = {} # queue_name -> consumer_tag
         self._reconnect_task = None
 
@@ -261,11 +261,11 @@ class RabbitMQConsumer:
 
 
 class ReconnectingRabbitMQConsumer():
-    def __init__(self, host: str = 'rabbitmq', port: int = 5672):
+    def __init__(self, host: str = 'rabbitmq', port: int = 5672, username: str = 'admin', password: str = 'admin'):
         self._host = host
         self._port = port
         self._reconnect_delay = 0
-        self._consumer = RabbitMQConsumer(host, port)
+        self._consumer = RabbitMQConsumer(host, port, username, password)
         self.queue_names = []
 
     async def run(self):

@@ -1,19 +1,26 @@
-from fastapi import FastAPI, BackgroundTasks
 import asyncio
 import json
-from app.client import ControllerClient
 import random
-import time
+import os
+import logging
+
+from fastapi import FastAPI
+from typing import List
+
+from app.client import ControllerClient
 from app.producer import RabbitMQProducer
 from app.consumer import ReconnectingRabbitMQConsumer
-import logging
 from app.models import ExchangeInfo, TicketInfo, Service
-from typing import List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST")
+RABBITMQ_PORT = os.getenv("RABBITMQ_PORT")
+RABBITMQ_USERNAME = os.getenv("RABBITMQ_USERNAME")
+RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD")
 
 @app.get("/")
 async def root():
@@ -21,8 +28,8 @@ async def root():
 
 consumer_task: asyncio.Task | None = None
 
-rabbitmq_consumer = ReconnectingRabbitMQConsumer()
-rabbitmq_producer = RabbitMQProducer()
+rabbitmq_consumer = ReconnectingRabbitMQConsumer(RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
+rabbitmq_producer = RabbitMQProducer(RABBITMQ_HOST, RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
 client = ControllerClient()
 
 @app.on_event("startup")
