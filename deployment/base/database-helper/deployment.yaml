@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database-helper
+  namespace: default
+  labels:
+    app: database-helper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database-helper
+  template:
+    metadata:
+      labels:
+        app: database-helper
+    spec:
+      containers:
+        - name: database-helper
+          image: localhost:32000/database-helper:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: database-helper-config

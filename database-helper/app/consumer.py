@@ -2,6 +2,7 @@ import pika
 import json
 from app.db import save_record
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,8 +27,13 @@ def response_callback(ch, method, properties, body):
 
 
 def start_consumer():
-    credentials = pika.PlainCredentials('admin', 'admin')
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', credentials=credentials))
+    RABBITMQ_USERNAME = os.getenv("RABBITMQ_USERNAME")
+    RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD")
+    RABBITMQ_HOST = os.getenv("RABBITMQ_HOST")
+    RABBITMQ_PORT = os.getenv("RABBITMQ_PORT")
+
+    credentials = pika.PlainCredentials(RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT, credentials=credentials))
     channel = connection.channel()
 
     request_queue = "database.request"
