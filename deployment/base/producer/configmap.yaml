@@ -5,6 +5,6 @@ metadata:
 data:
   RABBITMQ_HOST: "rabbitmq"
   RABBITMQ_PORT: "5672"
-  RABBITMQ_USERNAME: "guest"
-  RABBITMQ_PASSWORD: "guest"
+  RABBITMQ_USERNAME: "admin"
+  RABBITMQ_PASSWORD: "admin"
   CONTROLLER_SERVICE_URL: "http://controller-service:8000"

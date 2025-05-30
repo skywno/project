@@ -7,6 +7,5 @@ resources:
   - database-helper
   - postgres
   - database-migrations 
-  - rabbitmq
 
 namespace: default

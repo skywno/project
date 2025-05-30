@@ -1,7 +1,5 @@
 resources:
-  - ../../base
-  - rabbitmq
-
+  - rabbitmq.yaml
 
 configMapGenerator:
   - name: definitions

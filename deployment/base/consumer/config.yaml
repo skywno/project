@@ -5,5 +5,5 @@ metadata:
 data:
   CONSUMER_SERVICE_URL: "http://consumer-service:8000"
   CONTROLLER_SERVICE_URL: "http://controller-service:8000"
-  RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+  RABBITMQ_URL: "amqp://admin:admin@rabbitmq:5672/"
   

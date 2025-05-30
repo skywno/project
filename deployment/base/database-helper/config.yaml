@@ -8,7 +8,7 @@ data:
   POSTGRES_USER: "username"
   POSTGRES_PASSWORD: "password"
   POSTGRES_DB: "database"
-  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_HOST: rabbitmq
   RABBITMQ_PORT: "5672"
-  RABBITMQ_USERNAME: "admin"
-  RABBITMQ_PASSWORD: "admin"
+  RABBITMQ_USERNAME: admin
+  RABBITMQ_PASSWORD: admin
