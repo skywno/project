@@ -31,6 +31,7 @@ services:
       timeout: 10s
       retries: 5
     restart: unless-stopped
+
   consumer-1:
     container_name: consumer-1
     build:
@@ -81,7 +82,7 @@ services:
     depends_on:
       - database
     volumes:
-      - ./database-migrations:/flyway/sql
+      - ./database-migrations/sql:/flyway/sql
     command: -connectRetries=60 -baselineOnMigrate=true migrate
 
   database-helper:

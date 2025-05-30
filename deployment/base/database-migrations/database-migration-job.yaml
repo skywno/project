@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-migration-job
+spec:
+  template:
+    metadata:
+      name: database-migration-job
+    spec:
+      containers:
+        - name: database-migrations
+          image: localhost:32000/database-migrations:latest
+          env:
+            - name: FLYWAY_USER
+              value: "username"
+            - name: FLYWAY_PASSWORD
+              value: "password"
+            - name: POSTGRES_SERVICE_HOST
+              value: "postgres-service"
+            - name: POSTGRES_SERVICE_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "database"
+      restartPolicy: Never
+  backoffLimit: 2
