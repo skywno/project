@@ -1,6 +1,9 @@
 resources:
   - rabbitmq.yaml
 
+generatorOptions:
+  disableNameSuffixHash: true
+  
 configMapGenerator:
   - name: definitions
     files:

@@ -3,7 +3,6 @@ kind: RabbitmqCluster
 metadata:
   name: rabbitmq
 spec:
-  replicas: 1
   override:
     statefulSet:
       spec:
@@ -13,12 +12,12 @@ spec:
             - name: rabbitmq
               volumeMounts:
               - mountPath: /etc/rabbitmq/definitions.json
-                subPath: definitions.json # Name of the ConfigMap field containing definitions
+                subPath: definitions.json
                 name: definitions
             volumes:
             - name: definitions
               configMap:
-                name: definitions # Name of the ConfigMap which contains definitions you wish to import
+                name: definitions
   rabbitmq:
     additionalConfig: |
       load_definitions = /etc/rabbitmq/definitions.json # Path to the mounted definitions file
