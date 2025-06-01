@@ -11,7 +11,13 @@ class RabbitMQClient:
         self.connection = None
     
     async def connect(self):
-        self.connection = await aio_pika.connect_robust(self.url)
+        while self.connection is None:
+            try:
+                self.connection = await aio_pika.connect_robust(self.url)
+            except Exception as e:
+                logger.error(f"Error connecting to RabbitMQ: {e}")
+                logger.info("Retrying in 10 seconds")
+                await asyncio.sleep(10)
 
     async def close(self):
         await self.connection.close()

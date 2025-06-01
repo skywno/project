@@ -19,7 +19,7 @@ consumer = RabbitMQConsumer(client)
 async def startup_event():
     await client.connect()
     while not await check_service_health():
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
     queue = await send_register_request_and_get_queue()
     await consumer.connect(queue)
     await consumer.start()
