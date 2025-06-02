@@ -1,17 +1,27 @@
 #!/usr/bin/env python
 import pika
-from typing import Optional
 import logging
 from pika.spec import BasicProperties
-logging.basicConfig(level=logging.INFO)
+from app.config import RABBITMQ_HOST, RABBITMQ_USERNAME, RABBITMQ_PASSWORD
+
 logger = logging.getLogger(__name__)
 
+class RabbitMQProducerException(Exception):
+    pass
+
 class RabbitMQProducer:
-    def __init__(self, host: str = 'rabbitmq', username: str = 'admin', password: str = 'admin'):
+    def __init__(self, host: str = RABBITMQ_HOST, username: str = RABBITMQ_USERNAME, password: str = RABBITMQ_PASSWORD):
         self.host = host
-        self.connection = None
-        self.channel = None
+        self.connection : pika.BlockingConnection | None = None
+        self.channel : pika.BlockingChannel | None = None
         self.credentials = pika.PlainCredentials(username, password)
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def connect(self) -> None:
         """Establish connection to RabbitMQ server."""
@@ -24,7 +34,7 @@ class RabbitMQProducer:
             
         except pika.exceptions.AMQPConnectionError as e:
             logger.error(f"Failed to connect to RabbitMQ: {e}")
-            raise
+            raise RabbitMQProducerException(f"Failed to connect to RabbitMQ: {e}")
 
     def send_message(self, exchange: str, ticket_id: str, routing_key: str, message: str) -> None:
         """Send a message to the specified queue."""
@@ -46,10 +56,13 @@ class RabbitMQProducer:
             logger.info(f" [x] Sent message: {message}")
         except Exception as e:
             logger.error(f"Failed to send message: {e}")
-            raise
+            raise RabbitMQProducerException(f"Failed to send message: {e}")
 
     def close(self) -> None:
         """Close the connection to RabbitMQ."""
+        if self.channel:
+            self.channel.close()
+            logger.info("Channel closed")
         if self.connection and self.connection.is_open:
             self.connection.close()
             logger.info("Connection closed")

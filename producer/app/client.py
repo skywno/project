@@ -1,16 +1,13 @@
 import httpx
 import logging
-import os
 
 from fastapi import HTTPException
 from typing import List, Dict
-from app.models import Service, ExchangeInfo, TicketInfo
 
-logging.basicConfig(level=logging.INFO)
+from app.models import Service, ExchangeInfo, TicketInfo
+from app.config import CONTROLLER_SERVICE_URL
 
 logger = logging.getLogger(__name__)
-
-CONTROLLER_SERVICE_URL = os.getenv("CONTROLLER_SERVICE_URL")
 
 class ControllerClient:
 

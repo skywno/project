@@ -7,6 +7,8 @@ from pika.channel import Channel
 from pika.adapters.asyncio_connection import AsyncioConnection
 from typing import Dict
 
+from app.config import RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USERNAME, RABBITMQ_PASSWORD
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,7 +17,7 @@ class RabbitMQConsumer:
     """
     A class to manage the RabbitMQ connection and consumer.
     """
-    def __init__(self, host: str = 'rabbitmq', port: int = 5672, username: str = 'admin', password: str = 'admin'):
+    def __init__(self, host: str = RABBITMQ_HOST, port: int = RABBITMQ_PORT, username: str = RABBITMQ_USERNAME, password: str = RABBITMQ_PASSWORD):
         self._connection: AsyncioConnection | None = None
         self._channel: Channel | None = None
         self._host = host
@@ -85,7 +87,7 @@ class RabbitMQConsumer:
             connection.
 
         """
-        self._channel = None
+        self._connection = None
         self.reconnect()
 
 
@@ -139,7 +141,7 @@ class RabbitMQConsumer:
 
         """
         logger.warning('Channel %i was closed: %s', channel, reason)
-        # self.close_connection()
+        self._channel = None
 
 
     def add_on_cancel_callback(self):
@@ -159,11 +161,7 @@ class RabbitMQConsumer:
         :param pika.frame.Method method_frame: The Basic.Cancel frame
 
         """
-        logger.info('Consumer was cancelled remotely, shutting down: %r',
-                    method_frame)
-        # if self._channel:
-        #     self._channel.close()
-
+        logger.info('Consumer was cancelled remotely: %r', method_frame)
 
     def start_consuming(self, queue_name):
         """This method sets up the consumer by first calling
@@ -218,7 +216,6 @@ class RabbitMQConsumer:
 
         :param pika.frame.Method _unused_frame: The Basic.CancelOk frame
         :param str|unicode userdata: Extra user data (consumer tag)
-
         """
         logger.info(
             'RabbitMQ acknowledged the cancellation of the consumer: %s',
@@ -261,7 +258,7 @@ class RabbitMQConsumer:
 
 
 class ReconnectingRabbitMQConsumer():
-    def __init__(self, host: str = 'rabbitmq', port: int = 5672, username: str = 'admin', password: str = 'admin'):
+    def __init__(self, host: str = RABBITMQ_HOST, port: int = RABBITMQ_PORT, username: str = RABBITMQ_USERNAME, password: str = RABBITMQ_PASSWORD):
         self._host = host
         self._port = port
         self._reconnect_delay = 0
@@ -273,16 +270,13 @@ class ReconnectingRabbitMQConsumer():
         try:
             while True:
                 await self._maybe_reconnect()
-                await asyncio.sleep(1)
+                await asyncio.sleep(10)
         except asyncio.CancelledError:
             logger.info('Consumer task cancelled, cleaning up...')
-            self.stop()
+            self._consumer.stop()
             raise
         except Exception as e:
             logger.error(f'Error in consumer loop: {e}')
-
-    def stop(self):
-        self._consumer.stop()
 
     async def _maybe_reconnect(self):
         if self._consumer.should_reconnect:
