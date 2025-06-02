@@ -19,7 +19,7 @@ def request_callback(ch, method, properties, body):
 
 def response_callback(ch, method, properties, body):
     try:
-        message = body.decode('utf-8')
+        message = json.loads(body.decode('utf-8'))
         logger.info("Received message from response queue: %s", message)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:

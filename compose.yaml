@@ -70,6 +70,8 @@ services:
     container_name: database
     image: postgres:17.0
     restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=database
     env_file:
       - project.env
     volumes:

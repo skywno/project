@@ -192,10 +192,28 @@ class RabbitMQConsumer:
         :param bytes body: The message body
 
         """
-        logger.info('Received message # %s from %s: %s',
-                    basic_deliver.delivery_tag, properties.app_id, body)
-        logger.info('Acknowledging message %s', basic_deliver.delivery_tag)
-        self._channel.basic_ack(basic_deliver.delivery_tag)
+        try:
+            # Decode the message body from bytes to string and parse JSON
+            message = json.loads(body.decode('utf-8'))
+            logger.info('Received message # %s from %s: %s',
+                        basic_deliver.delivery_tag, properties.app_id, message)
+            
+            # Check if status is 'completed'
+            if message.get('status') == 'completed':
+                logger.info('Received completed status, stopping consumption')
+                self.stop_consuming(basic_deliver.routing_key)
+            
+            logger.info('Acknowledging message %s', basic_deliver.delivery_tag)
+            self._channel.basic_ack(basic_deliver.delivery_tag)
+            
+        except json.JSONDecodeError as e:
+            logger.error('Failed to decode JSON message: %s', e)
+            # Still acknowledge the message to prevent it from being requeued
+            self._channel.basic_ack(basic_deliver.delivery_tag)
+        except Exception as e:
+            logger.error('Error processing message: %s', e)
+            # Still acknowledge the message to prevent it from being requeued
+            self._channel.basic_ack(basic_deliver.delivery_tag)
 
 
     def stop_consuming(self, queue_name):

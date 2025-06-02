@@ -1,6 +1,8 @@
 import asyncio
 import aio_pika
 import logging
+import json
+
 from typing import Optional, Dict, Any
 from app.client import get_exchange_and_routing_key
 from app.config import RABBITMQ_URL
@@ -116,12 +118,14 @@ class RabbitMQConsumer:
             for status in range(0, 100, 10):
                 await publisher.publish(
                     f"ticket {ticket_id} is {status}% complete",
+                    "in_progress",
                     routing_key,
                     ticket_id
                 )
                 await asyncio.sleep(1)
             await publisher.publish(
                 f"ticket {ticket_id} is 100% complete",
+                "completed",
                 routing_key,
                 ticket_id
             )
@@ -185,15 +189,20 @@ class RabbitMQPublisher:
             self.exchange = None
             logger.info("Publisher channel closed")
 
-    async def publish(self, message: str, routing_key: str, ticket_id: str) -> None:
+    async def publish(self, message: str, status: str, routing_key: str, ticket_id: str) -> None:
         """Publish a message to the exchange."""
         if not self.exchange:
             raise RuntimeError("Publisher not connected to exchange")
 
         try:
+            message_body = json.dumps({
+                "message": message,
+                "status": status,
+                "ticket_id": ticket_id
+            })
             await self.exchange.publish(
                 message=aio_pika.Message(
-                    body=message.encode(),
+                    body=message_body.encode(),
                     headers={"x-ticket-id": ticket_id}
                 ),
                 routing_key=routing_key
