@@ -122,7 +122,7 @@ class RabbitMQConsumer:
                     routing_key,
                     ticket_id
                 )
-                await asyncio.sleep(1)
+                await asyncio.sleep(3)
             await publisher.publish(
                 f"ticket {ticket_id} is 100% complete",
                 "completed",
