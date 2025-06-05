@@ -3,3 +3,4 @@ resources:
   - rabbitmq
   - traefik
   - keda
+  - operator

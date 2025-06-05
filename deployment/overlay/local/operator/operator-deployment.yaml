@@ -1,0 +1,43 @@
+# operator-deployment.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rabbitmq-keda-operator-sa
+  namespace: default # Match your RBAC binding namespace
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq-keda-operator
+  namespace: default # Match your RBAC binding namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq-keda-operator
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-keda-operator
+    spec:
+      serviceAccountName: rabbitmq-keda-operator-sa # Link to your ServiceAccount
+      containers:
+      - name: operator
+        image: localhost:32000/rabbitmq-keda-operator:latest # Your image here
+        env:
+        - name: RABBITMQ_HOST
+          value: "http://rabbitmq.default.svc.cluster.local:15672" # Your RabbitMQ URL
+        - name: RABBITMQ_USER
+          value: "admin" # Your RabbitMQ username
+        - name: RABBITMQ_PASS
+          value: "admin"
+        - name: OPERATOR_NAMESPACE
+          value: "default" # The namespace where ScaledObjects/Deployments live
+        - name: RABBITMQ_POLL_INTERVAL_SECONDS
+          value: "15" # Poll every 15 seconds
+        - name: KEDA_MIN_REPLICAS
+          value: "0"
+        - name: KEDA_MAX_REPLICAS
+          value: "20"
+        - name: KEDA_QUEUE_LENGTH_THRESHOLD
+          value: "10"

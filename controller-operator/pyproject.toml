@@ -1,12 +1,10 @@
 [project]
-name = "controller"
+name = "controller-operator"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
 dependencies = [
-    "fastapi[standard]>=0.115.12",
     "kopf>=1.38.0",
     "kubernetes>=32.0.1",
-    "pika>=1.3.2",
+    "requests>=2.32.3",
 ]
