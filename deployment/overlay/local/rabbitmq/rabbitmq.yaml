@@ -19,5 +19,7 @@ spec:
               configMap:
                 name: definitions
   rabbitmq:
+    additionalPlugins:
+      - rabbitmq_event_exchange
     additionalConfig: |
       load_definitions = /etc/rabbitmq/definitions.json # Path to the mounted definitions file

@@ -1,3 +1,4 @@
+
 SERVICE_REQUEST_EXCHANGE_NAME = "service.request"
 CLIENT_REQUEST_EXCHANGE_NAME = "client.request"
 
@@ -5,7 +6,3 @@ SERVICE_RESPONSE_EXCHANGE_NAME = "service.response"
 
 DATABASE_REQUEST_QUEUE_NAME = "database.request"
 DATABASE_RESPONSE_QUEUE_NAME = "database.response"
-
-
-
-
