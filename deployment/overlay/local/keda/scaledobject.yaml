@@ -5,7 +5,6 @@ metadata:
 stringData:
   host: amqp://admin:admin@rabbitmq.default.svc.cluster.local:5672
   vhostName: /
-
 ---
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
@@ -24,8 +23,11 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: rabbitmq-scaledobject
+  name: consumer-queue-scaledobject
   namespace: default
+  labels:
+      kopf.operator.rabbitmq_queue: "consumer"
+      app.kubernetes.io/managed-by: "rabbitmq-keda-operator"
 spec:
   scaleTargetRef:
     name: consumer

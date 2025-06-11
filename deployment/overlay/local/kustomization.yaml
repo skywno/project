@@ -4,3 +4,6 @@ resources:
   - traefik
   - keda
   - operator
+  - kube-state-metrics
+  - cadvisor
+  # - prometheus

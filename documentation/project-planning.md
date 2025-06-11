@@ -10,7 +10,7 @@ gantt
     Literature Review & Background Research :active, lit_review, 2025-05-12, 4w
     Architecture Design & Technology Selection :active, arch_design, 2025-05-12, 4w
 	Test Plan / Evaluation Goals & Metrics by June 4th :test_plan, 2025-06-02, 2025-06-04 
-    Submit Objectives & Goals (Introduction Draft) by June 6th : milestone, goal, after test_plan, 2025-06-06
+    Submit Objectives & Goals (Introduction Draft) by June 13th : milestone, goal, after test_plan, 2025-06-06
 	First meeting with the supervisor by June 9th: milestone, first_meeting, 2025-06-09, 1d
     
 	section Development & Initial Testing

@@ -1,4 +1,3 @@
-
 SERVICE_REQUEST_EXCHANGE_NAME = "service.request"
 CLIENT_REQUEST_EXCHANGE_NAME = "client.request"
 

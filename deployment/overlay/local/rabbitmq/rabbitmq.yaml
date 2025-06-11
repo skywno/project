@@ -21,5 +21,6 @@ spec:
   rabbitmq:
     additionalPlugins:
       - rabbitmq_event_exchange
+      - rabbitmq_prometheus
     additionalConfig: |
       load_definitions = /etc/rabbitmq/definitions.json # Path to the mounted definitions file

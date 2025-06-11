@@ -1,0 +1,9 @@
+kind: Kustomization
+
+resources:
+  - https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.83.0/bundle.yaml # prometheus operator
+  - service-account.yaml
+  - cluster-role.yaml
+  - prometheus.yaml
+  - kube-state-metrics-monitor.yaml
+  - rabbitmq-service-monitor.yaml
