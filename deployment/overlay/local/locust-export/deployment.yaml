@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-metrics-exporter
+  namespace: locust
+  labels:
+    app: locust-metrics-exporter 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust-metrics-exporter
+  template:
+    metadata:
+      labels:
+        app: locust-metrics-exporter
+    spec:
+      containers:
+        - name: locust-metrics-exporter
+          image: containersol/locust_exporter
+          ports:
+            - name: http-metrics
+              containerPort: 9646
+            
+          env:
+            - name: LOCUST_EXPORTER_URI
+              value: http://locust.locust.svc.cluster.local:8089

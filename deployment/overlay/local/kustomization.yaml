@@ -3,7 +3,6 @@ resources:
   - rabbitmq
   - traefik
   - keda
-  - operator
   - kube-state-metrics
   - cadvisor
   # - prometheus

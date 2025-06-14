@@ -29,13 +29,19 @@ async def lifespan(app: FastAPI):
     global health_check_task
     global rabbitmq_keda_service
 
-    rabbitmq_keda_service = await get_rabbitmq_keda_service()
-    await rabbitmq_keda_service.start_consuming_to_queue_created_events()
+    try:
+        rabbitmq_keda_service = await get_rabbitmq_keda_service()
+        await rabbitmq_keda_service.start_consuming_to_queue_created_events()
+    except Exception as e:
+        logger.error(f"Error starting rabbitmq keda service: {e}", stack_info=True)
     health_check_running = True
     health_check_task = asyncio.create_task(run_health_check())
     yield
     logger.info("Closing connection")
-    await rabbitmq_keda_service.stop_consuming()
+    try:
+        await rabbitmq_keda_service.stop_consuming()
+    except Exception as e:
+        logger.error(f"Error stopping rabbitmq keda service: {e}", stack_info=True)
     health_check_running = False
     if health_check_task:
         health_check_task.cancel()

@@ -120,5 +120,25 @@ services:
     ports:
       - "9000:8000"
 
+  locust:
+    container_name: locust
+    build:
+      context: ./locust
+      dockerfile: Dockerfile
+    ports:
+      - "8089:8089"
+    depends_on:
+      - producer
+      - rabbitmq
+
+  locust-metrics-exporter:
+    image: containersol/locust_exporter
+    ports:
+      - "9646:9646"
+    environment:
+      - LOCUST_EXPORTER_URI=http://locust:8089
+    depends_on:
+      - locust
+  
 volumes:
   postgresql_data:

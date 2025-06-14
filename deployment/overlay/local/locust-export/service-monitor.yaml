@@ -1,0 +1,19 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  namespace: default
+  name: locust-metrics-exporter
+  labels:
+    team: devops
+spec:
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 14s
+  selector:
+    matchLabels:
+      app: locust-metrics-exporter
+  namespaceSelector:
+    any: true

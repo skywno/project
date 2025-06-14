@@ -1,31 +1,16 @@
 apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+kind: PodMonitor
 metadata:
-  name: kubelet-cadvisor
+  name: cadvisor
   namespace: default # Or your Prometheus namespace
   labels:
     team: devops # Must match your Prometheus CR's selector
 spec:
-  endpoints:
-  - port: https-metrics # Name of the secure port on Kubelet (usually 10250)
-    path: /metrics/cadvisor # cAdvisor metrics path
-    scheme: https
+  podMetricsEndpoints:
+  - port: http # Name of the secure port on Kubelet (usually 10250)
+    portNumber: 8080
+    path: /metrics # cAdvisor metrics path
     interval: 10s
-    tlsConfig:
-      insecureSkipVerify: true # WARNING: Not recommended for production without proper CA setup
-    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-    relabelings:
-      # This relabeling ensures Prometheus uses the Kubernetes API server
-      # to proxy requests to the Kubelet's /metrics/cadvisor endpoint.
-      # It replaces the target address with the API server's address
-      # and sets the correct __metrics_path__ for proxying.
-      - sourceLabels: [__address__]
-        targetLabel: __address__
-        replacement: kubernetes.default.svc:443 # Kubernetes API server address
-      - sourceLabels: [__meta_kubernetes_node_name]
-        targetLabel: __metrics_path__
-        regex: (.+)
-        replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
   selector:
     # This selects the Kubelet service, which typically doesn't exist as a formal Service.
     # Instead, we rely on the Prometheus Operator's ability to discover Kubelets
@@ -33,7 +18,7 @@ spec:
     # This selector is often empty or targets a specific label if your cluster management
     # creates a Service for Kubelets. For `kube-prometheus-stack`, it often works implicitly.
     matchLabels:
-      kubernetes.io/cluster-service: "true" # Common label for Kubelet service
+      app: cadvisor
   namespaceSelector:
     matchNames:
-      - kube-system # Kubelet usually runs in kube-system
+      - cadvisor
