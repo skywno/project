@@ -57,6 +57,7 @@ class RabbitMQConsumer:
         try:
             self.queue_name = queue_name
             self.channel = await self.client.connection.channel()
+            self.channel.set_qos(prefetch_count=10)
             self.queue = await self.channel.get_queue(self.queue_name, ensure=True)
             logger.info(f"Successfully connected to queue: {queue_name}")
         except aio_pika.exceptions.ChannelClosed as e:

@@ -38,8 +38,8 @@ def start_consumer():
 
     request_queue = "database.request"
     response_queue = "database.response"
-    channel.queue_declare(request_queue)
-    channel.queue_declare(response_queue)
+    channel.queue_declare(request_queue, durable=True)
+    channel.queue_declare(response_queue, durable=True)
     channel.basic_consume(queue=request_queue, on_message_callback=request_callback, auto_ack=False)
     channel.basic_consume(queue=response_queue, on_message_callback=response_callback, auto_ack=False)
     logger.info("Waiting for messages...")

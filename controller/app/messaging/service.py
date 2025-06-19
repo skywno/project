@@ -55,10 +55,22 @@ class RabbitMQKedaService:
         await self.rabbitmq_client.disconnect()
 
 class QueueService:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            if cls._instance is None:
+                cls._instance = super(QueueService, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self, rabbitmq_client: RabbitMQClient):
-        self.client = rabbitmq_client
-        self._channel: AbstractRobustChannel | None = None
-        self._service_request_exchange: AbstractRobustExchange | None = None
+        if not hasattr(self, 'initialized'):
+            self.client = rabbitmq_client
+            self._channel: AbstractRobustChannel | None = None
+            self._service_request_exchange: AbstractRobustExchange | None = None
+            self.initialized = True
+        else:
+            logger.debug("QueueService already initialized")
 
     async def channel(self) -> RobustChannel:
         if not self._channel:
