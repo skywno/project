@@ -2,7 +2,11 @@ resources:
   - ../../base
   - rabbitmq
   - traefik
-  - keda
   - kube-state-metrics
   - cadvisor
-  # - prometheus
+  - prometheus
+  - grafana
+  - node-exporter
+  - kubelet
+  - locust-exporter
+  - monitoring

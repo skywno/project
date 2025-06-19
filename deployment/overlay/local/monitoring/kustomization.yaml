@@ -1,0 +1,7 @@
+resources:
+  - rabbitmq.yaml
+  - kube-state-metrics.yaml
+  - cadvisor.yaml
+  - locust-exporter.yaml
+  - node-exporter.yaml
+  - kubelet.yaml

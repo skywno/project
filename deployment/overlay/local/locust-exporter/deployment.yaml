@@ -21,7 +21,6 @@ spec:
           ports:
             - name: http-metrics
               containerPort: 9646
-            
           env:
             - name: LOCUST_EXPORTER_URI
               value: http://locust.locust.svc.cluster.local:8089

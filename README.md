@@ -4,6 +4,8 @@ microk8s
     - registry
     - dns
     - storage
+    - metrics-server
+
 keda operator
 rabbitmq operator
 - plugins

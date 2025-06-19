@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  namespace: default
+  name: node-exporter
+  labels:
+    team: devops
+spec:
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 14s
+      relabelings:
+      - sourceLabels: [__meta_kubernetes_pod_node_name]
+        action: replace
+        targetLabel: node
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: exporter
+      app.kubernetes.io/name: node-exporter
+  namespaceSelector:
+    any: true

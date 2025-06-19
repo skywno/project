@@ -7,4 +7,3 @@ resources:
   - prometheus.yaml
   - kube-state-metrics-monitor.yaml
   - rabbitmq-service-monitor.yaml
-  - cadvisor-monitor.yaml
