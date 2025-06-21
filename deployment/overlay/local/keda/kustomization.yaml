@@ -1,3 +1,2 @@
 resources:
   - keda-2.17.0.yaml
-  - scaledobject.yaml

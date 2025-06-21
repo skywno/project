@@ -6,4 +6,4 @@ class WebsiteUser(HttpUser):
 
     @task
     def index(self):
-        self.client.get("/")
+        self.client.post("/task")

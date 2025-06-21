@@ -22,5 +22,5 @@ spec:
             - containerPort: 8089
           args:
             - -f
-            - /mnt/locust/locustfile.py,/mnt/locust/shape_classes/step_load.py
+            - /mnt/locust/locustfile.py,/mnt/locust/shape_classes/gradual_load.py
             - --host=http://producer-service.default.svc.cluster.local:8000
