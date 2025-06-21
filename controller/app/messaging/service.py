@@ -93,9 +93,9 @@ class QueueService:
         exchange_name = f"{SERVICE_RESPONSE_EXCHANGE_NAME}.{service_type}"
         queue = await self.get_queue_for_ticket(ticket_id)
         routing_key = queue.name
-
         service_response_exchange = await self._create_exchange(exchange_name, "topic")
-        await self._create_and_bind_queue(queue.name, service_response_exchange, routing_key)
+        await queue.bind(service_response_exchange, routing_key)
+        logger.info(f"Created and bound queue {queue.name} to {service_response_exchange} with routing key {routing_key}")
         await self._create_database_response_queue(service_response_exchange, 'ticket.#')
 
         return PublishInfo(
@@ -107,7 +107,7 @@ class QueueService:
         """get queue name for a ticket ID."""
         queue_name = f"ticket.{ticket_id}"
         channel = await self.channel()
-        queue = await channel.declare_queue(queue_name, durable=True)
+        queue = await channel.declare_queue(queue_name, durable=True, auto_delete=True)
         return queue
 
     async def create_client_exchange_bound_to_service_exchange(self, service_type: str) -> PublishInfo:

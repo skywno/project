@@ -202,10 +202,10 @@ class RabbitMQConsumer:
             if message.get('status') == 'completed':
                 logger.info('Received completed status, stopping consumption')
                 self.stop_consuming(basic_deliver.routing_key)
-            
-            logger.info('Acknowledging message %s', basic_deliver.delivery_tag)
-            self._channel.basic_ack(basic_deliver.delivery_tag)
-            
+            else:
+                logger.info('Acknowledging message %s', basic_deliver.delivery_tag)
+                self._channel.basic_ack(basic_deliver.delivery_tag)
+                
         except json.JSONDecodeError as e:
             logger.error('Failed to decode JSON message: %s', e)
             # Still acknowledge the message to prevent it from being requeued
