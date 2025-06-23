@@ -29,6 +29,38 @@ class KedaService:
             logger.error(f"Error reading deployment: {e}")
             return
 
+        # Create Secret first
+        secret_name = "keda-rabbitmq-secret"
+        secret_body = self._load_secret_template(secret_name)
+        try:
+            self.client.core_api.create_namespaced_secret(
+                namespace=self.settings.operator_namespace,
+                body=secret_body
+            )
+            logger.info(f"Created Secret '{secret_name}'.")
+        except client.ApiException as e:
+            if e.status != 409:  # 409 means already exists
+                logger.error(f"Error creating Secret: {e}")
+                return
+
+        # Create TriggerAuthentication
+        trigger_auth_name = "keda-trigger-auth-rabbitmq-conn"
+        trigger_auth_body = self._load_trigger_auth_template(trigger_auth_name)
+        try:
+            self.client.co_api.create_namespaced_custom_object(
+                group="keda.sh",
+                version="v1alpha1",
+                namespace=self.settings.operator_namespace,
+                plural="triggerauthentications",
+                body=trigger_auth_body
+            )
+            logger.info(f"Created TriggerAuthentication '{trigger_auth_name}'.")
+        except client.ApiException as e:
+            if e.status != 409:  # 409 means already exists
+                logger.error(f"Error creating TriggerAuthentication: {e}")
+                return
+
+        # Create ScaledObject
         scaled_object_name = self._get_scaled_object_name(queue_name)
         body = self._load_scaled_object_template(queue_name, target_deployment_name, scaled_object_name)
         try:
@@ -44,11 +76,31 @@ class KedaService:
             if e.status != 409:
                 logger.error(f"Error creating ScaledObject: {e}")
 
-    
     def _get_scaled_object_name(self, queue_name: str) -> str:
         """Generate a consistent ScaledObject name from a queue name."""
         return f"keda-so-{queue_name.lower().replace('.', '-').replace('_', '-')}"
 
+    def _load_secret_template(self, secret_name):
+        path = os.path.join(os.path.dirname(__file__), 'templates/secret.yaml')
+        with open(path, "rt") as f:
+            tmpl = f.read()
+        text = tmpl.format(
+            operator_namespace=self.settings.operator_namespace,
+            username=self.settings.rabbitmq_username,
+            password=self.settings.rabbitmq_password,
+            host=self.settings.rabbitmq_host,
+            port=self.settings.rabbitmq_port
+        )
+        return yaml.safe_load(text)
+
+    def _load_trigger_auth_template(self, trigger_auth_name):
+        path = os.path.join(os.path.dirname(__file__), 'templates/trigger-auth.yaml')
+        with open(path, "rt") as f:
+            tmpl = f.read()
+        text = tmpl.format(
+            operator_namespace=self.settings.operator_namespace
+        )
+        return yaml.safe_load(text)
 
     def _load_scaled_object_template(self, queue_name, target_deployment_name, scaled_object_name):
         path = os.path.join(os.path.dirname(__file__), 'templates/scaledobject.yaml')
@@ -60,12 +112,11 @@ class KedaService:
             queue_name=queue_name,
             target_deployment_name=target_deployment_name,
             polling_interval=self.settings.poll_interval,
+            cooldown_period=self.settings.cooldown_period,
             min_replica_count=self.settings.keda_min_replicas,
             max_replica_count=self.settings.keda_max_replicas,
-            rabbitmq_host=self.settings.rabbitmq_host,
         )
         return yaml.safe_load(text)
-
 
     def delete_scaled_object(self, scaled_object_name):
         try:
@@ -81,7 +132,6 @@ class KedaService:
         except client.ApiException as e:
             if e.status != 404:
                 logger.error(f"Error deleting ScaledObject: {e}")
-
 
     def get_managed_scaled_objects(self):
         try:

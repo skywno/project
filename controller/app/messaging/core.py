@@ -45,10 +45,10 @@ class RabbitMQClient:
                 retry_count += 1
                 logger.error(f"Error connecting to RabbitMQ at {self.url}: {e}")
                 if retry_count < self.max_retries:
-                    logger.info(f"Retrying connection in 5 seconds... (Attempt {retry_count}/{self.max_retries})")
-                    await asyncio.sleep(5)
+                    logger.info(f"Retrying connection in 10 seconds... (Attempt {retry_count}/{self.max_retries})")
+                    await asyncio.sleep(10)
             except Exception as e:
                 logger.error(f"Unexpected error connecting to RabbitMQ: {e}")
-                raise
+                raise e
         logger.error(f"Failed to connect after {self.max_retries} attempts")
-        raise
+        raise Exception("Failed to connect to RabbitMQ")

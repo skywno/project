@@ -30,6 +30,11 @@ class Settings(BaseSettings):
         default=30,
         env="RABBITMQ_POLL_INTERVAL_SECONDS"
     )
+
+    cooldown_period: int = Field(
+        default=300,
+        env="KEDA_COOLDOWN_PERIOD"
+    )
     keda_min_replicas: int = Field(
         default=0,
         env="KEDA_MIN_REPLICAS"
@@ -41,7 +46,7 @@ class Settings(BaseSettings):
     keda_queue_length_threshold: int = Field(
         default=5,
         env="KEDA_QUEUE_LENGTH_THRESHOLD"
-    )       
+    )
 
     model_config = SettingsConfigDict(env_file="project.env")
 

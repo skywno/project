@@ -9,6 +9,7 @@ class KubernetesClient:
     def __init__(self):
         self._co_api: Optional[client.CustomObjectsApi] = None
         self._apps_api: Optional[client.AppsV1Api] = None
+        self._core_api: Optional[client.CoreV1Api] = None
         self._initialize_clients()
 
     def _initialize_clients(self) -> None:
@@ -22,6 +23,7 @@ class KubernetesClient:
         
         self._co_api = client.CustomObjectsApi()
         self._apps_api = client.AppsV1Api()
+        self._core_api = client.CoreV1Api()
 
     @property
     def co_api(self) -> client.CustomObjectsApi:
@@ -36,3 +38,10 @@ class KubernetesClient:
         if not self._apps_api:
             self._initialize_clients()
         return self._apps_api
+    
+    @property
+    def core_api(self) -> client.CoreV1Api:
+        """Get the CoreV1Api client."""
+        if not self._core_api:
+            self._initialize_clients()
+        return self._core_api

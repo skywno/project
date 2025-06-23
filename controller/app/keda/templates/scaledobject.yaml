@@ -8,14 +8,21 @@ metadata:
     app.kubernetes.io/managed-by: "rabbitmq-keda-operator"
 spec:
   scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
     name: "{target_deployment_name}"
   pollingInterval: {polling_interval}
+  cooldownPeriod:   {cooldown_period}                          
   minReplicaCount: {min_replica_count}
   maxReplicaCount: {max_replica_count}
+  advanced:                                       
+    restoreToOriginalReplicaCount: true           
   triggers:
   - type: rabbitmq
     metadata:
+      protocol: amqp
       queueName: "{queue_name}"
-      host: "{rabbitmq_host}"
       mode: QueueLength
       value: "20"
+    authenticationRef:
+      name: keda-trigger-auth-rabbitmq-conn

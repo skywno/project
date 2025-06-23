@@ -21,7 +21,7 @@ async def get_rabbitmq_client() -> RabbitMQClient:
         port = settings.rabbitmq_port
         username = settings.rabbitmq_username
         password = settings.rabbitmq_password
-        _rabbitmq_client = RabbitMQClient(host, port, username, password)
+        _rabbitmq_client = RabbitMQClient(host, port, username, password, max_retries=20)
         logger.info("Creating new RabbitMQ client")
     await _rabbitmq_client.connect()
     return _rabbitmq_client

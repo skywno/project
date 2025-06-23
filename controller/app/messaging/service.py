@@ -42,7 +42,7 @@ class RabbitMQKedaService:
                 self.keda_service.create_scaled_object(queue_name, target_deployment, logger)
         else:
             logger.debug(f"Queue '{queue_name}' already has a managed ScaledObject.")
-
+        await message.ack()
 
     def get_target_deployment_name(self, queue_name: str) -> str | None:
         """Map a queue name to a target deployment name."""

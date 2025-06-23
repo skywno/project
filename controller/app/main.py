@@ -20,7 +20,6 @@ http_client = httpx.AsyncClient()
 
 health_check_task = None
 health_check_running = False
-
 rabbitmq_keda_service = None
 
 @asynccontextmanager
