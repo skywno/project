@@ -10,7 +10,7 @@ spec:
   - port: http # Name of the secure port on Kubelet (usually 10250)
     portNumber: 8080
     path: /metrics # cAdvisor metrics path
-    interval: 10s
+    interval: 5s
   selector:
     # This selects the Kubelet service, which typically doesn't exist as a formal Service.
     # Instead, we rely on the Prometheus Operator's ability to discover Kubelets

@@ -15,7 +15,7 @@ spec:
       insecureSkipVerify: true
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
   - honorLabels: true
-    interval: 30s
+    interval: 5s
     path: /metrics/cadvisor
     port: https-metrics
     scheme: https

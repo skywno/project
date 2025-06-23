@@ -10,12 +10,10 @@ spec:
   endpoints:
   - port: prometheus
     scheme: http
-    interval: 15s
-    scrapeTimeout: 14s
+    interval: 5s
   - port: prometheus-tls
     scheme: https
-    interval: 15s
-    scrapeTimeout: 14s
+    interval: 5s
     tlsConfig:
       insecureSkipVerify: true # set to false and uncomment lines below to enable tls verification
         # ca:
@@ -30,8 +28,7 @@ spec:
       family:
         - queue_coarse_metrics
         - queue_metrics
-    interval: 15s
-    scrapeTimeout: 14s
+    interval: 5s
   - port: prometheus-tls
     scheme: https
     path: /metrics/detailed
@@ -39,8 +36,7 @@ spec:
       family:
         - queue_coarse_metrics
         - queue_metrics
-    interval: 15s
-    scrapeTimeout: 14s
+    interval: 5s
     tlsConfig:
       insecureSkipVerify: true # set to false and uncomment lines below to enable tls verification
         # ca:

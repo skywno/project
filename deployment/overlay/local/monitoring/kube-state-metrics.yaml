@@ -14,4 +14,4 @@ spec:
   endpoints:
   - port: http-metrics
     path: /metrics
-    interval: 10s # How often Prometheus should scrape these metrics
+    interval: 5s # How often Prometheus should scrape these metrics
