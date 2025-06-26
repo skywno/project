@@ -16,7 +16,8 @@
 
 ### Scenario 2: Sudden Load Spikes
 #### Method:
-- Suddenly inject a very large number of messages into the queue using locust (e.g., 10,000 or 100,000 messages in a very short burst).
+- Suddenly inject a very large number of messages into the queue using locust (
+    e.g., 10,000 or 100,000 messages in a very short burst).
 - Observe how quickly KEDA reacts and scales up.
 - Monitor for any message backlogs or increased latency during the spike.
 #### Metrics:

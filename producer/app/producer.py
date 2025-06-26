@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import pika
 import logging
+import datetime
+
 from pika.spec import BasicProperties
 from app.config import RABBITMQ_HOST, RABBITMQ_USERNAME, RABBITMQ_PASSWORD
 
@@ -44,7 +46,8 @@ class RabbitMQProducer:
         try:
             properties = BasicProperties(
                 headers={
-                    "x-ticket-id": ticket_id
+                    "x-ticket-id": ticket_id,
+                    "client_request_send_time_in_ms": int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
                 }
             )
             self.channel.basic_publish(
