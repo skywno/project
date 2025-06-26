@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from typing import List
 from contextlib import asynccontextmanager
 
+from datetime import datetime, timezone
 from app.client import ControllerClient
 from app.producer import RabbitMQProducer, RabbitMQProducerException
 from app.consumer import ReconnectingRabbitMQConsumer
@@ -87,7 +88,8 @@ def create_message_payload(ticket_id):
         "user_id": "some user_id",
         "group_id": "some group id",
         "target_type": "RAG",
-        "task": "do something"
+        "task": "do something",
+        "client_request_send_time_in_ms": int(datetime.now(timezone.utc).timestamp() * 1000)
     }
 
     return json.dumps(data)

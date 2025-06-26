@@ -2,8 +2,9 @@ import asyncio
 import aio_pika
 import logging
 import json
-from datetime import datetime, timezone
+import uuid
 
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from app.client import get_exchange_and_routing_key
 from app.config import RABBITMQ_URL
@@ -117,20 +118,23 @@ class RabbitMQConsumer:
     async def _process_ticket_status(self, publisher: 'RabbitMQPublisher', ticket_id: str, routing_key: str) -> None:
         """Process ticket status updates."""
         try:
+            job_id = str(uuid.uuid4())
             service_processing_start_time = datetime.now(timezone.utc)
             for status in range(0, 100, 20):
                 await publisher.publish_in_progress(
                     f"ticket {ticket_id} is {status}% complete",
                     routing_key,
                     ticket_id,
-                    service_processing_start_time
+                    service_processing_start_time,
+                    job_id
                 )
                 await asyncio.sleep(1)
             await publisher.publish_completed(
                 f"ticket {ticket_id} is 100% complete",
                 routing_key,
                 ticket_id,
-                service_processing_start_time
+                service_processing_start_time,
+                job_id
             )
         except Exception as e:
             logger.error(f"Error processing ticket status for {ticket_id}: {e}")
@@ -192,34 +196,44 @@ class RabbitMQPublisher:
             self.exchange = None
             logger.info("Publisher channel closed")
 
-    async def publish_in_progress(self, message: str, routing_key: str, ticket_id: str, start_time: datetime):
+    async def publish_in_progress(self, message: str, routing_key: str, ticket_id: str, start_time: datetime, job_id: str):
         headers = {
             "x-ticket-id": ticket_id,
+            "event_type": "response",
+        }
+        body = {
+            "message": message,
+            "status": "in_progress",
+            "ticket_id": ticket_id,
             "service_processing_start_time_in_ms": int(start_time.timestamp() * 1000),
             "service_processing_last_update_time_in_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
+            "job_id": job_id,
         }
-        await self.publish(message, "in_progress", routing_key, ticket_id, headers)
+        await self.publish(body, routing_key, ticket_id, headers)
     
-    async def publish_completed(self, message: str, routing_key: str, ticket_id: str, start_time: datetime):
+    async def publish_completed(self, message: str, routing_key: str, ticket_id: str, start_time: datetime, job_id: str):
         headers = {
             "x-ticket-id": ticket_id,
+            "event_type": "response",
+        }
+
+        body = {
+            "message": message,
+            "status": "completed",
+            "ticket_id": ticket_id,
             "service_processing_start_time_in_ms": int(start_time.timestamp() * 1000),
             "service_processing_end_time_in_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
             "service_processing_last_update_time_in_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
+            "job_id": job_id,
         }
-        await self.publish(message, "completed", routing_key, ticket_id, headers)
-    
+        await self.publish(body, routing_key, ticket_id, headers)
 
-    async def publish(self, message: str, status: str, routing_key: str, ticket_id: str, headers: dict) -> None:
+    async def publish(self, body: dict, routing_key: str, ticket_id: str, headers: dict) -> None:
         """Publish a message to the exchange."""
         if not self.exchange:
             raise RuntimeError("Publisher not connected to exchange")
         try:
-            message_body = json.dumps({
-                "message": message,
-                "status": status,
-                "ticket_id": ticket_id
-            })
+            message_body = json.dumps(body)
             await self.exchange.publish(
                 message=aio_pika.Message(
                     body=message_body.encode(),

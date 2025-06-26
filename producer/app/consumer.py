@@ -3,10 +3,12 @@ import json
 import logging
 import functools
 import pika
+
+from datetime import datetime, timezone
 from pika.channel import Channel
 from pika.adapters.asyncio_connection import AsyncioConnection
 from typing import Dict
-
+from app.producer import RabbitMQProducer
 from app.config import RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USERNAME, RABBITMQ_PASSWORD
 
 # Configure logging
@@ -193,6 +195,7 @@ class RabbitMQConsumer:
 
         """
         try:
+            ticket_id = properties.headers.get("x-ticket-id")
             # Decode the message body from bytes to string and parse JSON
             message = json.loads(body.decode('utf-8'))
             logger.info('Received message # %s from %s: %s',
@@ -202,6 +205,16 @@ class RabbitMQConsumer:
             if message.get('status') == 'completed':
                 logger.info('Received completed status, stopping consumption')
                 self.stop_consuming(basic_deliver.routing_key)
+                logger.info(f"Sending event_logs message for ticket_id: {ticket_id}")
+                message = json.dumps({
+                    "ticket_id": ticket_id,
+                    "user_id": "some user_id",
+                    "group_id": "some group id",
+                    "response_completion_time_in_ms": int(datetime.now(timezone.utc).timestamp() * 1000)
+                })
+                # Using default exchange to send a message directly to `database.request` queue
+                with RabbitMQProducer() as rabbitmq_producer:
+                    rabbitmq_producer.send_message(exchange="", ticket_id=ticket_id, routing_key="event_logs", message=message)
             else:
                 logger.info('Acknowledging message %s', basic_deliver.delivery_tag)
                 self._channel.basic_ack(basic_deliver.delivery_tag)

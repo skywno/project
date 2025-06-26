@@ -1,4 +1,5 @@
 from psycopg2 import pool
+from psycopg2.extras import Json
 import os
 import logging
 from datetime import datetime, timezone
@@ -118,7 +119,20 @@ def save_queue_deleted(headers: dict):
         ))
     
     execute_db_operation(insert_queue_deleted, "Queue deleted record save")
+
+def save_data(ticket_id: str, event_type: str, data: dict):
+    logger.info(f"Saving data for ticket {ticket_id} with event type {event_type}")
+
+    def insert_data(cursor):
+        cursor.execute("""
+            INSERT INTO event_logs (ticket_id, event_type, data) VALUES (%s, %s, %s)
+        """, (
+            ticket_id,
+            event_type,
+            Json(data)
+        ))
     
+    execute_db_operation(insert_data, "Data record save")
 # Could be its own util function
 def to_datetime(timestamp_in_ms: int) -> datetime:
     if timestamp_in_ms is None:

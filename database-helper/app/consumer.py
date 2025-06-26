@@ -1,6 +1,6 @@
 import pika
 import json
-from app.db import save_request, save_response, save_queue_deleted
+from app.db import save_request, save_response, save_queue_deleted, save_data
 import logging
 import os
 
@@ -36,6 +36,16 @@ def queue_deleted_callback(ch, method, properties, body):
     except Exception as e:
         logger.error(f"Error processing message: {e}")
 
+
+def on_message_callback(ch, method, properties, body):
+    try:
+        ticket_id = properties.headers.get("x-ticket-id")
+        event_type = properties.headers.get("event_type")
+        data = json.loads(body.decode('utf-8'))
+        save_data(ticket_id, event_type, data)    
+    except Exception as e:
+        logger.error(f"Error processing message: {e}")
+
 def start_consumer():
     RABBITMQ_USERNAME = os.getenv("RABBITMQ_USERNAME")
     RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD")
@@ -46,18 +56,9 @@ def start_consumer():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT, credentials=credentials))
     channel = connection.channel()
 
-    request_queue = "database.request"
-    response_queue = "database.response"
-    queue_deleted_queue = "queue_created"
-    event_exchange_name = "amq.rabbitmq.event"
-    routing_key = "queue.deleted"
+    queue = "event_logs"
 
-    channel.queue_declare(request_queue, durable=True)
-    channel.queue_declare(response_queue, durable=True)
-    channel.queue_declare(queue_deleted_queue, durable=True)
-    channel.queue_bind(queue=queue_deleted_queue, exchange=event_exchange_name, routing_key=routing_key)
-    channel.basic_consume(queue=request_queue, on_message_callback=request_callback, auto_ack=False)
-    channel.basic_consume(queue=response_queue, on_message_callback=response_callback, auto_ack=False)
-    channel.basic_consume(queue=queue_deleted_queue, on_message_callback=queue_deleted_callback, auto_ack=False)
+    channel.queue_declare(queue, durable=True)
+    channel.basic_consume(queue=queue, on_message_callback=on_message_callback, auto_ack=False)
     logger.info("Waiting for messages...")
     channel.start_consuming()

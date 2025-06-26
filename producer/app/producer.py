@@ -47,7 +47,7 @@ class RabbitMQProducer:
             properties = BasicProperties(
                 headers={
                     "x-ticket-id": ticket_id,
-                    "client_request_send_time_in_ms": int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+                    "event_type": "request"
                 }
             )
             self.channel.basic_publish(
