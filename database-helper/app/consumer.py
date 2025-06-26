@@ -39,10 +39,8 @@ def queue_deleted_callback(ch, method, properties, body):
 
 def on_message_callback(ch, method, properties, body):
     try:
-        ticket_id = properties.headers.get("x-ticket-id")
-        event_type = properties.headers.get("event_type")
         data = json.loads(body.decode('utf-8'))
-        save_data(ticket_id, event_type, data)    
+        save_data(properties.headers, data)    
     except Exception as e:
         logger.error(f"Error processing message: {e}")
 

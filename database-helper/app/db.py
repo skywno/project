@@ -120,15 +120,23 @@ def save_queue_deleted(headers: dict):
     
     execute_db_operation(insert_queue_deleted, "Queue deleted record save")
 
-def save_data(ticket_id: str, event_type: str, data: dict):
-    logger.info(f"Saving data for ticket {ticket_id} with event type {event_type}")
+def save_data(headers: dict, data: dict):
+    logger.info(f"Saving data for ticket {headers.get('x-ticket-id')} with event type {headers.get('event_type')}")
 
     def insert_data(cursor):
+        ticket_id = headers.get('x-ticket-id')
+        event_type = headers.get('event_type')
+        user_id = headers.get('user_id')
+        group_id = headers.get('group_id')
+        target_type = headers.get('target_type')
         cursor.execute("""
-            INSERT INTO event_logs (ticket_id, event_type, data) VALUES (%s, %s, %s)
+            INSERT INTO event_logs (ticket_id, event_type, user_id, group_id, target_type, data) VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             ticket_id,
             event_type,
+            user_id,
+            group_id,
+            target_type,
             Json(data)
         ))
     

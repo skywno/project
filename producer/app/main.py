@@ -69,11 +69,11 @@ async def task():
         ticket_id = ticket_info.ticket_id
         queue_name = ticket_info.queue_name
 
-        message = create_message_payload(ticket_id)
+        body = create_message_payload(ticket_id)
         rabbitmq_consumer.start_consuming(queue_name)
         with RabbitMQProducer() as rabbitmq_producer:
-            rabbitmq_producer.send_message(exchange_name, ticket_id, routing_key, message)
-        return {"message": "Task created"}
+            rabbitmq_producer.send_message(exchange_name, ticket_id, routing_key, body)
+        return {"message": "Task created", "ticket_id": ticket_id}
     except RabbitMQProducerException as e:
         logger.error(f"Error while sending message: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -84,10 +84,6 @@ async def task():
 
 def create_message_payload(ticket_id):
     data = {
-        "ticket_id": ticket_id,
-        "user_id": "some user_id",
-        "group_id": "some group id",
-        "target_type": "RAG",
         "task": "do something",
         "client_request_send_time_in_ms": int(datetime.now(timezone.utc).timestamp() * 1000)
     }
