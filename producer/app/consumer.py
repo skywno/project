@@ -207,7 +207,7 @@ class RabbitMQConsumer:
                 self.stop_consuming(basic_deliver.routing_key)
                 logger.info(f"Sending event_logs message for ticket_id: {ticket_id}")
                 body = json.dumps({
-                    "response_completion_time_in_ms": str(datetime.now(timezone.utc))
+                    "request_completion_time": datetime.now(timezone.utc).isoformat()
                 })
                 # Using default exchange to send a message directly to `database.request` queue
                 with RabbitMQProducer() as rabbitmq_producer:

@@ -85,7 +85,7 @@ async def task():
 def create_message_payload(ticket_id):
     data = {
         "task": "do something",
-        "client_request_send_time_in_ms": int(datetime.now(timezone.utc).timestamp() * 1000)
+        "request_submission_time": datetime.now(timezone.utc).isoformat()
     }
 
     return json.dumps(data)

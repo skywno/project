@@ -11,3 +11,4 @@ CREATE TABLE event_logs (
 
 -- Optional: Add a B-tree index on ticket_id for faster lookups
 CREATE INDEX idx_event_logs_ticket_id ON event_logs (ticket_id);
+

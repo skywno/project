@@ -8,6 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+#deprecated
 def request_callback(ch, method, properties, body):
     logger.info("Received message from request queue: %s", body.decode())
     try:
@@ -18,6 +19,7 @@ def request_callback(ch, method, properties, body):
     except Exception as e:
         logger.error(f"Error processing message: {e}")
 
+#deprecated
 def response_callback(ch, method, properties, body):
     try:
         headers = properties.headers
@@ -27,6 +29,7 @@ def response_callback(ch, method, properties, body):
     except Exception as e:
         logger.error(f"Error processing message: {e}")
 
+#deprecated
 def queue_deleted_callback(ch, method, properties, body):
     try:
         headers = properties.headers
@@ -36,11 +39,11 @@ def queue_deleted_callback(ch, method, properties, body):
     except Exception as e:
         logger.error(f"Error processing message: {e}")
 
-
 def on_message_callback(ch, method, properties, body):
     try:
         data = json.loads(body.decode('utf-8'))
         save_data(properties.headers, data)    
+        ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
         logger.error(f"Error processing message: {e}")
 

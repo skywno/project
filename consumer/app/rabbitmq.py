@@ -202,8 +202,8 @@ class RabbitMQPublisher:
             "message": message,
             "status": "in_progress",
             "ticket_id": headers.get("x-ticket-id"),
-            "service_processing_start_time_in_ms": str(start_time),
-            "service_processing_last_update_time_in_ms": str(datetime.now(timezone.utc)),
+            "service_processing_start_time": start_time.isoformat(),
+            "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
             "job_id": job_id,
         }
         await self.publish(body, routing_key, headers)
@@ -214,9 +214,9 @@ class RabbitMQPublisher:
             "message": message,
             "status": "completed",
             "ticket_id": headers.get("x-ticket-id"),
-            "service_processing_start_time_in_ms": str(start_time),
-            "service_processing_end_time_in_ms": str(datetime.now(timezone.utc)),
-            "service_processing_last_update_time_in_ms": str(datetime.now(timezone.utc)),
+            "service_processing_start_time": start_time.isoformat(),
+            "service_processing_end_time": datetime.now(timezone.utc).isoformat(),
+            "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
             "job_id": job_id,
         }
         await self.publish(body, routing_key, headers)
