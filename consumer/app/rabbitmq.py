@@ -7,7 +7,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from app.client import get_exchange_and_routing_key
-from app.config import RABBITMQ_URL
+from app.config import RABBITMQ_URL, TIME_TO_FIRST_TOKEN, INTER_TOKEN_LATENCY, OUTPUT_LENGTH, REQUEST_LATENCY, ENABLE_STREAMING
+from lorem_text import lorem
 
 logger = logging.getLogger(__name__)
 
@@ -109,37 +110,20 @@ class RabbitMQConsumer:
 
             async with RabbitMQPublisher(self.client, exchange) as publisher:
                 async with message.process():
-                    await self._process_ticket_status(publisher, ticket_id, routing_key, message.headers)
+                    await self._process_ticket(publisher, ticket_id, routing_key, message.headers)
             logger.info(f"Published message for ticket {ticket_id} to exchange {exchange} with routing key {routing_key}")
         except Exception as e:
             logger.error(f"Error duringprocessing message for ticket {ticket_id}: {e}")
             await message.nack(requeue=True)
             raise
 
-    async def _process_ticket_status(self, publisher: 'RabbitMQPublisher', ticket_id: str, routing_key: str, headers: dict) -> None:
+    async def _process_ticket(self, publisher: 'RabbitMQPublisher', ticket_id: str, routing_key: str, headers: dict) -> None:
         """Process ticket status updates."""
-        try:
-            job_id = str(uuid.uuid4())
-            service_processing_start_time = datetime.now(timezone.utc)
-            for status in range(0, 100, 20):
-                await publisher.publish_in_progress(
-                    f"ticket {ticket_id} is {status}% complete",
-                    routing_key,
-                    service_processing_start_time,
-                    job_id,
-                    headers
-                )
-                await asyncio.sleep(1)
-            await publisher.publish_completed(
-                f"ticket {ticket_id} is 100% complete",
-                routing_key,
-                service_processing_start_time,
-                job_id,
-                headers
-            )
-        except Exception as e:
-            logger.error(f"Error processing ticket status for {ticket_id}: {e}")
-            raise
+        job_id = str(uuid.uuid4())
+        if ENABLE_STREAMING:
+            await publisher.publish_stream(job_id, ticket_id, routing_key, headers)
+        else:
+            await publisher.publish_batch(job_id, ticket_id, routing_key, headers)
 
     async def close(self) -> None:
         """Close the consumer channel."""
@@ -197,9 +181,54 @@ class RabbitMQPublisher:
             self.exchange = None
             logger.info("Publisher channel closed")
 
+
+    async def mock_inference_stream(self,):
+        """
+        Simulates a streaming inference response that yields tokens.
+        - Simulates time to first token (TTFT)
+        - Simulates latency between tokens
+        """
+        # Simulate delay before first token (Time to First Token)
+        await asyncio.sleep(TIME_TO_FIRST_TOKEN * 0.001) # convert to seconds
+        for i in range(OUTPUT_LENGTH):
+            is_first = i == 0
+            is_last = i == OUTPUT_LENGTH - 1
+            yield f"token_{i}", is_first, is_last  # Return token, is_first, and is_last
+            await asyncio.sleep(INTER_TOKEN_LATENCY * 0.001) # convert to seconds
+
+    async def publish_stream(self, job_id: str, ticket_id: str, routing_key: str, headers: dict):
+        """Publish a stream of tokens to the exchange."""
+        try:
+            start_time = datetime.now(timezone.utc)
+            async for token, is_first, is_last in self.mock_inference_stream():
+                if is_first:
+                    # Publish first token with different message structure
+                    await self.publish_started(token, routing_key, start_time, job_id, headers)
+                elif is_last:
+                    # Publish last token with different message structure
+                    await self.publish_completed(token, routing_key, start_time, job_id, headers)
+                else:
+                    # Publish subsequent tokens
+                    await self.publish_in_progress(token, routing_key, start_time, job_id, headers)
+        except Exception as e:
+            logger.error(f"Error publishing stream for ticket {ticket_id}: {e}")
+            raise
+
+    async def publish_started(self, token: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
+        """Publish the first token with special message structure."""
+        body = {
+            "tokens": token,
+            "status": "started",
+            "ticket_id": headers.get("x-ticket-id"),
+            "job_id": job_id,
+            "service_processing_start_time": start_time.isoformat(),
+            "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
+        }
+        await self.publish(body, routing_key, headers)
+
     async def publish_in_progress(self, message: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
         body = {
-            "message": message,
+            "tokens": message,
             "status": "in_progress",
             "ticket_id": headers.get("x-ticket-id"),
             "service_processing_start_time": start_time.isoformat(),
@@ -209,9 +238,8 @@ class RabbitMQPublisher:
         await self.publish(body, routing_key, headers)
     
     async def publish_completed(self, message: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
-
         body = {
-            "message": message,
+            "tokens": message,
             "status": "completed",
             "ticket_id": headers.get("x-ticket-id"),
             "service_processing_start_time": start_time.isoformat(),
@@ -220,6 +248,26 @@ class RabbitMQPublisher:
             "job_id": job_id,
         }
         await self.publish(body, routing_key, headers)
+
+    async def publish_batch(self, job_id: str, ticket_id: str, routing_key: str, headers: dict):
+        """Publish a batch of tokens to the exchange."""
+        try:
+            start_time = datetime.now(timezone.utc)
+            await asyncio.sleep(REQUEST_LATENCY * 0.001) # convert to seconds
+            end_time = datetime.now(timezone.utc)
+            body = {
+                "tokens": lorem.words(OUTPUT_LENGTH),
+                "status": "completed",
+                "ticket_id": ticket_id,
+                "service_processing_start_time": start_time.isoformat(),
+                "service_processing_end_time": end_time.isoformat(),
+                "service_processing_last_update_time": end_time.isoformat(),
+                "job_id": job_id,
+            }
+            await self.publish(body, routing_key, headers)
+        except Exception as e:
+            logger.error(f"Error publishing batch for ticket {ticket_id}: {e}")
+            raise
 
     async def publish(self, body: dict, routing_key: str, headers: dict) -> None:
         """Publish a message to the exchange."""

@@ -200,7 +200,14 @@ class RabbitMQConsumer:
             message = json.loads(body.decode('utf-8'))
             logger.info('Received message # %s from %s: %s',
                         basic_deliver.delivery_tag, properties.app_id, message)
-            
+            if message.get('status') == 'started':
+                logger.info('Received started status, starting consumption')
+                body = json.dumps({
+                    "time_to_first_token": datetime.now(timezone.utc).isoformat()
+                })
+                # Using default exchange to send a message directly to `database.request` queue
+                with RabbitMQProducer() as rabbitmq_producer:
+                    rabbitmq_producer.send_message(exchange="", ticket_id=ticket_id, routing_key="event_logs", body=body)
             # Check if status is 'completed'
             if message.get('status') == 'completed':
                 logger.info('Received completed status, stopping consumption')

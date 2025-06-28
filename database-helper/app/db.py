@@ -120,9 +120,9 @@ def save_queue_deleted(headers: dict):
     
     execute_db_operation(insert_queue_deleted, "Queue deleted record save")
 
-def save_data(headers: dict, data: dict):
-    logger.info(f"Saving data for ticket {headers.get('x-ticket-id')} with event type {headers.get('event_type')}")
+prompt_response_in_memory = {}
 
+def save_data(headers: dict, data: dict):
     def insert_data(cursor):
         ticket_id = headers.get('x-ticket-id')
         event_type = headers.get('event_type')
@@ -139,8 +139,51 @@ def save_data(headers: dict, data: dict):
             target_type,
             Json(data)
         ))
+
+    ticket_id = headers.get('x-ticket-id')
+    event_type = headers.get('event_type')
     
-    execute_db_operation(insert_data, "Data record save")
+    # Validate required fields
+    if not ticket_id:
+        logger.error("Missing required field: x-ticket-id")
+        return
+    
+    if not event_type:
+        logger.error("Missing required field: event_type")
+        return
+
+    if event_type == 'response':
+        status = data.get('status')
+        if not status:
+            logger.error("Missing required field: status for response event")
+            return
+            
+        # Initialize ticket data if it doesn't exist
+        if ticket_id not in prompt_response_in_memory:
+            prompt_response_in_memory[ticket_id] = {
+                "tokens": [],
+                "service_processing_last_update_time": None
+            }
+        
+        if status == 'started':
+            prompt_response_in_memory[ticket_id]['service_processing_last_update_time'] = data.get('service_processing_last_update_time')
+            prompt_response_in_memory[ticket_id]['tokens'] = [data.get('tokens')]
+        elif status == 'in_progress':
+            prompt_response_in_memory[ticket_id]['service_processing_last_update_time'] = data.get('service_processing_last_update_time')
+            prompt_response_in_memory[ticket_id]['tokens'].append(data.get('tokens'))
+        elif status == 'completed':
+            prompt_response_in_memory[ticket_id]['service_processing_last_update_time'] = data.get('service_processing_last_update_time')
+            prompt_response_in_memory[ticket_id]['tokens'].append(data.get('tokens'))
+            data['tokens'] = " ".join(prompt_response_in_memory[ticket_id]['tokens']) if type(prompt_response_in_memory[ticket_id]['tokens']) is list else prompt_response_in_memory[ticket_id]['tokens']
+            data['service_processing_last_update_time'] = prompt_response_in_memory[ticket_id]['service_processing_last_update_time']
+            execute_db_operation(insert_data, "Data record save")
+            del prompt_response_in_memory[ticket_id]
+        else:
+            logger.warning(f"Unknown status '{status}' for response event, saving as-is")
+            execute_db_operation(insert_data, "Data record save")
+    else:
+        execute_db_operation(insert_data, "Data record save")
+
 # Could be its own util function
 def to_datetime(timestamp_in_ms: int) -> datetime:
     if timestamp_in_ms is None:

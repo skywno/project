@@ -12,3 +12,15 @@ CREATE TABLE event_logs (
 -- Optional: Add a B-tree index on ticket_id for faster lookups
 CREATE INDEX idx_event_logs_ticket_id ON event_logs (ticket_id);
 
+
+SELECT COUNT(el.ticket_id)
+FROM 
+    event_logs el
+WHERE
+    el.event_type = 'request'
+GROUP BY
+    el.ticket_id
+HAVING
+    COUNT(el.data ->> 'status' = 'completed') = 0
+ORDER BY
+    el.ticket_id ASC;
