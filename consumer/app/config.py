@@ -9,4 +9,5 @@ TIME_TO_FIRST_TOKEN = os.getenv("TIME_TO_FIRST_TOKEN") or 22 # milliseconds
 INTER_TOKEN_LATENCY = os.getenv("INTER_TOKEN_LATENCY") or 5 # milliseconds
 OUTPUT_LENGTH = os.getenv("OUTPUT_LENGTH") or 115 # tokens
 REQUEST_LATENCY = os.getenv("REQUEST_LATENCY") or 540 # milliseconds
+MAX_CONCURRENT_REQUESTS = os.getenv("MAX_CONCURRENT_REQUESTS") or 5
 ENABLE_STREAMING = os.getenv("ENABLE_STREAMING") or True

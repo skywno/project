@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from app.client import get_exchange_and_routing_key
-from app.config import RABBITMQ_URL, TIME_TO_FIRST_TOKEN, INTER_TOKEN_LATENCY, OUTPUT_LENGTH, REQUEST_LATENCY, ENABLE_STREAMING
+from app.config import RABBITMQ_URL, TIME_TO_FIRST_TOKEN, INTER_TOKEN_LATENCY, OUTPUT_LENGTH, REQUEST_LATENCY, ENABLE_STREAMING, MAX_CONCURRENT_REQUESTS
 from lorem_text import lorem
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,8 @@ class RabbitMQConsumer:
         self.channel: Optional[aio_pika.Channel] = None
         self._task: Optional[asyncio.Task] = None
         self._is_consuming: bool = False
-
+        self.active_requests = 0
+        
     async def connect(self, queue_name: str) -> None:
         """Connect to a specific queue."""
         try:
@@ -96,26 +97,31 @@ class RabbitMQConsumer:
         """Process incoming messages."""
         ticket_id = message.headers.get("x-ticket-id")
         message.headers.update({"event_type": "response"})
+
         if not ticket_id:
             logger.error("Message received without ticket_id")
             await message.nack(requeue=False)
             return
 
         try:
+            self.active_requests += 1
             exchange, routing_key = await get_exchange_and_routing_key(ticket_id)
-            if not exchange or not routing_key:
-                logger.error(f"Failed to get exchange info for ticket {ticket_id}")
-                await message.nack(requeue=True)
-                return
 
-            async with RabbitMQPublisher(self.client, exchange) as publisher:
-                async with message.process():
-                    await self._process_ticket(publisher, ticket_id, routing_key, message.headers)
-            logger.info(f"Published message for ticket {ticket_id} to exchange {exchange} with routing key {routing_key}")
+            # Acquire semaphore before creating publisher connection
+            async with InferenceSimulator.concurrency_semaphore:
+                logger.info(f"[{ticket_id}] Request started. Active requests: {self.active_requests}/{MAX_CONCURRENT_REQUESTS}")
+                async with RabbitMQPublisher(self.client, exchange) as publisher:
+                    async with message.process():
+                        await self._process_ticket(publisher, ticket_id, routing_key, message.headers)
+                logger.info(f"Published message for ticket {ticket_id} to exchange {exchange} with routing key {routing_key}")
+                    
         except Exception as e:
             logger.error(f"Error duringprocessing message for ticket {ticket_id}: {e}")
             await message.nack(requeue=True)
             raise
+        finally:
+            self.active_requests -= 1
+            logger.info(f"[{ticket_id}] Request completed. Active requests: {self.active_requests}/{MAX_CONCURRENT_REQUESTS}")
 
     async def _process_ticket(self, publisher: 'RabbitMQPublisher', ticket_id: str, routing_key: str, headers: dict) -> None:
         """Process ticket status updates."""
@@ -182,39 +188,25 @@ class RabbitMQPublisher:
             logger.info("Publisher channel closed")
 
 
-    async def mock_inference_stream(self,):
-        """
-        Simulates a streaming inference response that yields tokens.
-        - Simulates time to first token (TTFT)
-        - Simulates latency between tokens
-        """
-        # Simulate delay before first token (Time to First Token)
-        await asyncio.sleep(TIME_TO_FIRST_TOKEN * 0.001) # convert to seconds
-        for i in range(OUTPUT_LENGTH):
-            is_first = i == 0
-            is_last = i == OUTPUT_LENGTH - 1
-            yield f"token_{i}", is_first, is_last  # Return token, is_first, and is_last
-            await asyncio.sleep(INTER_TOKEN_LATENCY * 0.001) # convert to seconds
-
     async def publish_stream(self, job_id: str, ticket_id: str, routing_key: str, headers: dict):
         """Publish a stream of tokens to the exchange."""
         try:
             start_time = datetime.now(timezone.utc)
-            async for token, is_first, is_last in self.mock_inference_stream():
+            async for token, is_first, is_last in InferenceSimulator.mock_inference_stream():
                 if is_first:
                     # Publish first token with different message structure
-                    await self.publish_started(token, routing_key, start_time, job_id, headers)
+                    await self._publish_started(token, routing_key, start_time, job_id, headers)
                 elif is_last:
                     # Publish last token with different message structure
-                    await self.publish_completed(token, routing_key, start_time, job_id, headers)
+                    await self._publish_completed(token, routing_key, start_time, job_id, headers)
                 else:
                     # Publish subsequent tokens
-                    await self.publish_in_progress(token, routing_key, start_time, job_id, headers)
+                    await self._publish_in_progress(token, routing_key, start_time, job_id, headers)
         except Exception as e:
             logger.error(f"Error publishing stream for ticket {ticket_id}: {e}")
             raise
 
-    async def publish_started(self, token: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
+    async def _publish_started(self, token: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
         """Publish the first token with special message structure."""
         body = {
             "tokens": token,
@@ -224,9 +216,9 @@ class RabbitMQPublisher:
             "service_processing_start_time": start_time.isoformat(),
             "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
         }
-        await self.publish(body, routing_key, headers)
+        await self._publish(body, routing_key, headers)
 
-    async def publish_in_progress(self, message: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
+    async def _publish_in_progress(self, message: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
         body = {
             "tokens": message,
             "status": "in_progress",
@@ -235,9 +227,9 @@ class RabbitMQPublisher:
             "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
             "job_id": job_id,
         }
-        await self.publish(body, routing_key, headers)
+        await self._publish(body, routing_key, headers)
     
-    async def publish_completed(self, message: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
+    async def _publish_completed(self, message: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
         body = {
             "tokens": message,
             "status": "completed",
@@ -247,7 +239,7 @@ class RabbitMQPublisher:
             "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
             "job_id": job_id,
         }
-        await self.publish(body, routing_key, headers)
+        await self._publish(body, routing_key, headers)
 
     async def publish_batch(self, job_id: str, ticket_id: str, routing_key: str, headers: dict):
         """Publish a batch of tokens to the exchange."""
@@ -264,12 +256,12 @@ class RabbitMQPublisher:
                 "service_processing_last_update_time": end_time.isoformat(),
                 "job_id": job_id,
             }
-            await self.publish(body, routing_key, headers)
+            await self._publish(body, routing_key, headers)
         except Exception as e:
             logger.error(f"Error publishing batch for ticket {ticket_id}: {e}")
             raise
 
-    async def publish(self, body: dict, routing_key: str, headers: dict) -> None:
+    async def _publish(self, body: dict, routing_key: str, headers: dict) -> None:
         """Publish a message to the exchange."""
         if not self.exchange:
             raise RuntimeError("Publisher not connected to exchange")
@@ -288,3 +280,25 @@ class RabbitMQPublisher:
             logger.error(f"Error publishing message for ticket {ticket_id}: {e}")
             raise
         
+class InferenceSimulator:
+    # Class variables - shared across all instances
+    concurrency_semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+    time_to_first_token = TIME_TO_FIRST_TOKEN
+    inter_token_latency = INTER_TOKEN_LATENCY
+    output_length = OUTPUT_LENGTH
+
+    @classmethod
+    async def mock_inference_stream(cls):
+        """
+        Simulates a streaming inference response that yields tokens.
+        - Simulates time to first token (TTFT)
+        - Simulates latency between tokens
+        """
+        # Simulate delay before first token (Time to First Token)
+        # await asyncio.sleep(cls.time_to_first_token * 0.001) # convert to seconds
+        await asyncio.sleep(10)
+        for i in range(cls.output_length):
+            is_first = i == 0
+            is_last = i == cls.output_length - 1
+            yield f"token_{i}", is_first, is_last  # Return token, is_first, and is_last
+            await asyncio.sleep(cls.inter_token_latency * 0.001) # convert to seconds

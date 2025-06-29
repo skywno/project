@@ -41,5 +41,5 @@ async def get_exchange_and_routing_key(ticket_id: str) -> Tuple[str, str]:
         response = await http_client.post(f"{CONTROLLER_SERVICE_URL}/service/exchange/{SERVICE_TYPE}/ticket/{ticket_id}")
         return response.json()["exchange_name"], response.json()["routing_key"]
     except Exception as e:
-        logger.error(f"Error getting exchange: {e}")
+        logger.error(f"Failed to get exchange info for ticket {ticket_id}: {e}")
         raise

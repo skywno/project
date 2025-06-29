@@ -168,9 +168,11 @@ def save_data(headers: dict, data: dict):
         if status == 'started':
             prompt_response_in_memory[ticket_id]['service_processing_last_update_time'] = data.get('service_processing_last_update_time')
             prompt_response_in_memory[ticket_id]['tokens'] = [data.get('tokens')]
+            execute_db_operation(insert_data, "Data record save")
         elif status == 'in_progress':
             prompt_response_in_memory[ticket_id]['service_processing_last_update_time'] = data.get('service_processing_last_update_time')
             prompt_response_in_memory[ticket_id]['tokens'].append(data.get('tokens'))
+            # Do not save the data record here, because it will be saved when the status is completed
         elif status == 'completed':
             prompt_response_in_memory[ticket_id]['service_processing_last_update_time'] = data.get('service_processing_last_update_time')
             prompt_response_in_memory[ticket_id]['tokens'].append(data.get('tokens'))
