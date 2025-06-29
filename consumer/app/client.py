@@ -36,10 +36,10 @@ async def send_register_request_and_get_queue() -> str | None:
         raise
 
 
-async def get_exchange_and_routing_key(ticket_id: str) -> Tuple[str, str]:
+async def get_exchange_and_routing_key(client_id: str) -> Tuple[str, str]:
     try:
-        response = await http_client.post(f"{CONTROLLER_SERVICE_URL}/service/exchange/{SERVICE_TYPE}/ticket/{ticket_id}")
+        response = await http_client.post(f"{CONTROLLER_SERVICE_URL}/service/exchange/{SERVICE_TYPE}/client/{client_id}")
         return response.json()["exchange_name"], response.json()["routing_key"]
     except Exception as e:
-        logger.error(f"Failed to get exchange info for ticket {ticket_id}: {e}")
+        logger.error(f"Failed to get exchange info for client {client_id}: {e}")
         raise

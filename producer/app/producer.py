@@ -38,7 +38,7 @@ class RabbitMQProducer:
             logger.error(f"Failed to connect to RabbitMQ: {e}")
             raise RabbitMQProducerException(f"Failed to connect to RabbitMQ: {e}")
 
-    def send_message(self, exchange: str, ticket_id: str, routing_key: str, body: str) -> None:
+    def send_message(self, exchange: str, client_id: str, ticket_id: str, routing_key: str, body: str) -> None:
         """Send a message to the specified queue."""
         if not self.connection or not self.channel:
             self.connect()
@@ -47,6 +47,7 @@ class RabbitMQProducer:
             properties = BasicProperties(
                 headers={
                     "x-ticket-id": ticket_id,
+                    "x-client-id": client_id,
                     "event_type": "request",
                     "user_id": "some user_id",
                     "group_id": "some group id",

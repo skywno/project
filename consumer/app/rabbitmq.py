@@ -96,16 +96,17 @@ class RabbitMQConsumer:
     async def _on_message(self, message: aio_pika.abc.AbstractIncomingMessage) -> None:
         """Process incoming messages."""
         ticket_id = message.headers.get("x-ticket-id")
+        client_id = message.headers.get("x-client-id")
         message.headers.update({"event_type": "response"})
 
-        if not ticket_id:
-            logger.error("Message received without ticket_id")
+        if not ticket_id or not client_id:
+            logger.error("Message received without ticket_id or client_id")
             await message.nack(requeue=False)
             return
 
         try:
             self.active_requests += 1
-            exchange, routing_key = await get_exchange_and_routing_key(ticket_id)
+            exchange, routing_key = await get_exchange_and_routing_key(client_id)
 
             # Acquire semaphore before creating publisher connection
             async with InferenceSimulator.concurrency_semaphore:

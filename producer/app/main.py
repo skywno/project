@@ -72,7 +72,7 @@ async def task():
         body = create_message_payload(ticket_id)
         rabbitmq_consumer.start_consuming(queue_name)
         with RabbitMQProducer() as rabbitmq_producer:
-            rabbitmq_producer.send_message(exchange_name, ticket_id, routing_key, body)
+            rabbitmq_producer.send_message(exchange_name, client.client_id, ticket_id, routing_key, body)
         return {"message": "Task created", "ticket_id": ticket_id}
     except RabbitMQProducerException as e:
         logger.error(f"Error while sending message: {e}")

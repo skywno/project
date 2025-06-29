@@ -94,10 +94,10 @@ async def get_service_types() -> List[ServiceRegisterRequest]:
         logging.error(f"Error getting service types: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/service/exchange/{service_type}/ticket/{ticket_id}")
-async def create_service_exchange(ticket_id: int, service_type: str, queue_service: QueueService = Depends(get_queue_service)) -> PublishInfo:
+@app.post("/service/exchange/{service_type}/client/{client_id}")
+async def create_service_exchange(client_id: str, service_type: str, queue_service: QueueService = Depends(get_queue_service)) -> PublishInfo:
     try:
-        return await queue_service.create_service_response_exchange(service_type, ticket_id)
+        return await queue_service.create_service_response_exchange(service_type, client_id)
     except Exception as e:
         logging.error(f"Error creating service exchange: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -111,11 +111,11 @@ async def create_client_exchange(service_type: str, queue_service: QueueService 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ticket")
-async def create_ticket(queue_service: QueueService = Depends(get_queue_service)) -> TicketInfo:
+async def create_ticket(client_id: str, queue_service: QueueService = Depends(get_queue_service)) -> TicketInfo:
     try:
         global ticket_id
         ticket_id += 1
-        queue = await queue_service.get_queue_for_ticket(ticket_id)
+        queue = await queue_service.get_queue_for_client(client_id)
         return TicketInfo(ticket_id=ticket_id, queue_name=queue.name)
     except Exception as e:
         logging.error(f"Error creating ticket: {e}")

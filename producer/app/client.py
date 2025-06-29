@@ -1,5 +1,6 @@
 import httpx
 import logging
+import uuid
 
 from fastapi import HTTPException
 from typing import List, Dict
@@ -10,6 +11,8 @@ from app.config import CONTROLLER_SERVICE_URL
 logger = logging.getLogger(__name__)
 
 class ControllerClient:
+    def __init__(self):
+        self.client_id = str(uuid.uuid4())
 
     def get_service_list(self) -> List[Service]:
         try:
@@ -42,10 +45,11 @@ class ControllerClient:
     def get_ticket_number_and_queue(self) -> TicketInfo:
         """Get a ticket number and queue to listen for the ticket"""
         try:
-            response = httpx.post(f"{CONTROLLER_SERVICE_URL}/ticket")
+            response = httpx.post(f"{CONTROLLER_SERVICE_URL}/ticket?client_id={self.client_id}")
             data = response.json()
             ticket_id = str(data.get("ticket_id"))
             queue_name = data.get("queue_name")
+            logger.info(f"Ticket ID: {ticket_id}, Queue Name: {queue_name}")
             return TicketInfo(ticket_id=ticket_id, queue_name=queue_name)
 
         except httpx.HTTPStatusError as e:

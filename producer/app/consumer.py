@@ -175,7 +175,7 @@ class RabbitMQConsumer:
         will invoke when a message is fully received.
 
         """
-        logger.info('Issuing consumer related RPC commands')
+        logger.info(f'Issuing consumer related RPC commands for queue_name: {queue_name}')
         self._consumer_tags[queue_name] = self._channel.basic_consume(
             queue_name, self.on_message)
 
@@ -198,8 +198,6 @@ class RabbitMQConsumer:
             ticket_id = properties.headers.get("x-ticket-id")
             # Decode the message body from bytes to string and parse JSON
             message = json.loads(body.decode('utf-8'))
-            logger.info('Received message # %s from %s: %s',
-                        basic_deliver.delivery_tag, properties.app_id, message)
             if message.get('status') == 'started':
                 logger.info('Received started status, starting consumption')
                 body = json.dumps({
@@ -207,18 +205,19 @@ class RabbitMQConsumer:
                 })
                 # Using default exchange to send a message directly to `database.request` queue
                 with RabbitMQProducer() as rabbitmq_producer:
-                    rabbitmq_producer.send_message(exchange="", ticket_id=ticket_id, routing_key="event_logs", body=body)
+                    rabbitmq_producer.send_message(exchange="", client_id=None, ticket_id=ticket_id, routing_key="event_logs", body=body)
+                self._channel.basic_ack(basic_deliver.delivery_tag)
             # Check if status is 'completed'
-            if message.get('status') == 'completed':
+            elif message.get('status') == 'completed':
                 logger.info('Received completed status, stopping consumption')
-                self.stop_consuming(basic_deliver.routing_key)
                 logger.info(f"Sending event_logs message for ticket_id: {ticket_id}")
                 body = json.dumps({
                     "request_completion_time": datetime.now(timezone.utc).isoformat()
                 })
                 # Using default exchange to send a message directly to `database.request` queue
                 with RabbitMQProducer() as rabbitmq_producer:
-                    rabbitmq_producer.send_message(exchange="", ticket_id=ticket_id, routing_key="event_logs", body=body)
+                    rabbitmq_producer.send_message(exchange="", client_id=None, ticket_id=ticket_id, routing_key="event_logs", body=body)
+                self._channel.basic_ack(basic_deliver.delivery_tag)
             else:
                 logger.info('Acknowledging message %s', basic_deliver.delivery_tag)
                 self._channel.basic_ack(basic_deliver.delivery_tag)
@@ -226,11 +225,11 @@ class RabbitMQConsumer:
         except json.JSONDecodeError as e:
             logger.error('Failed to decode JSON message: %s', e)
             # Still acknowledge the message to prevent it from being requeued
-            self._channel.basic_ack(basic_deliver.delivery_tag)
+            self._channel.basic_nack(basic_deliver.delivery_tag)
         except Exception as e:
             logger.error('Error processing message: %s', e)
             # Still acknowledge the message to prevent it from being requeued
-            self._channel.basic_ack(basic_deliver.delivery_tag)
+            self._channel.basic_nack(basic_deliver.delivery_tag)
 
 
     def stop_consuming(self, queue_name):
@@ -325,8 +324,9 @@ class ReconnectingRabbitMQConsumer():
                 self._consumer.start_consuming(queue_name)
 
     def start_consuming(self, queue_name):
-        self.queue_names.append(queue_name)
-        self._consumer.start_consuming(queue_name) 
+        if queue_name not in self.queue_names:
+            self.queue_names.append(queue_name)
+            self._consumer.start_consuming(queue_name) 
 
     def stop_consuming(self, queue_name):
         self.queue_names.remove(queue_name)
