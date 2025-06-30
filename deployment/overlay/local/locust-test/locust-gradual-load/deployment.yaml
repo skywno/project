@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-gradual-load
+  namespace: locust
+  labels:
+    app: locust
+    locust-test: "gradual"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust
+      locust-test: "gradual"
+  template:
+    metadata:
+      labels:
+        app: locust
+        locust-test: "gradual"
+    spec:
+      containers:
+        - name: locust
+          image: localhost:32000/locust
+          ports:
+            - containerPort: 8089
+          args:
+            - -f
+            - /mnt/locust/locustfile.py,/mnt/locust/shape_classes/gradual_load.py
+            - --host=http://producer-service.default.svc.cluster.local:8000

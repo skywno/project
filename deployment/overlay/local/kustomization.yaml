@@ -1,5 +1,9 @@
 resources:
-  - ../../base
+  - ../../base/producer
+  - ../../base/controller
+  - ../../base/database-helper
+  - ../../base/database-migrations
+  - ../../base/postgres
   - rabbitmq
   - kube-state-metrics
   - prometheus
@@ -8,3 +12,4 @@ resources:
   - locust-exporter
   - keda
   - monitoring
+  - consumer-replicas

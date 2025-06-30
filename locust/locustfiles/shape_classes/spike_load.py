@@ -2,43 +2,45 @@ from locust import LoadTestShape
 import math
 
 class SpikeLoadShape(LoadTestShape):
-    # Base configuration
-    base_users = 10         # Number of users for the normal load
-    base_spawn_rate = 5     # Spawn rate for the normal load
-    
-    # Spike configuration
-    spike_users = 200       # Number of users during the spike
-    spike_spawn_rate = 100  # Spawn rate for the spike (should be high to quickly reach spike_users)
-    
-    spike_start_time = 60   # Time (seconds) after which the spike should start
-    spike_duration = 120    # Duration (seconds) of the spike
+    """
+    A custom load shape that provides a gradual ramp-up, sustained peak load,
+    and then a gradual ramp-down.
+    """
+    initial_baseline_users = 30 # Users during the initial low period
+    initial_baseline_spawn_rate = 2 # Spawn rate during the initial low period
 
-    # Overall test duration
-    total_run_time = 300    # Total time (seconds) for the entire test
+    peak_users = 1000
+    spike_spawn_rate = 50
+
+    spike_duration = 60
+    
+    # Time before spike starts. This is effectively the duration of the initial baseline.
+    pre_spike_duration = 100 
+    
+    # Time after spike ends, for the post-spike baseline.
+    post_spike_duration = 100 
+    post_spike_baseline_users = 30 # Users during the post-spike low period
+    post_spike_baseline_spawn_rate = 2 # Spawn rate during the post-spike low period
+
+    # Calculated start and end times for the spike based on pre_spike_duration
+    spike_start_time = pre_spike_duration
+    spike_end_time = pre_spike_duration + spike_duration
 
     def tick(self):
-        run_time = self.get_run_time()
-
-        if run_time > self.total_run_time:
-            # Stop the test after total_run_time
-            return None
-
-        # Calculate spike end time
-        spike_end_time = self.spike_start_time + self.spike_duration
-
-        if self.spike_start_time <= run_time < spike_end_time:
-            # During the spike
-            print(f"Time: {run_time:.1f}s - SPIKE! Users: {self.spike_users}, Spawn Rate: {self.spike_spawn_rate}")
-            return (self.spike_users, self.spike_spawn_rate)
-        elif run_time < self.spike_start_time:
-            # Before the spike (normal load ramp-up)
-            # You can make this a ramp-up if needed, for simplicity it's constant here
-            current_users = min(self.base_users, math.ceil(run_time * self.base_spawn_rate))
-            print(f"Time: {run_time:.1f}s - Pre-spike. Users: {current_users}, Spawn Rate: {self.base_spawn_rate}")
-            return (self.base_users, self.base_spawn_rate)
+        run_time = self.get_run_time() # Get the total time the test has been running
+        
+        # Phase 1: Initial Baseline
+        if run_time < self.spike_start_time:
+            return (self.initial_baseline_users, self.initial_baseline_spawn_rate)
+        
+        # Phase 2: Spike
+        elif run_time >= self.spike_start_time and run_time < self.spike_end_time:
+            return (self.peak_users, self.spike_spawn_rate)
+        
+        # Phase 3: Post-Spike Baseline
+        elif run_time >= self.spike_end_time and run_time < self.spike_end_time + self.post_spike_duration:
+            return (self.post_spike_baseline_users, self.post_spike_baseline_spawn_rate)
+        
+        # Phase 4: Test End
         else:
-            # After the spike (return to normal or zero load)
-            # Here we return to base users. You could also ramp down to 0, or just to base_users.
-            # To ramp down after the spike, you'd need more complex logic.
-            print(f"Time: {run_time:.1f}s - Post-spike. Users: {self.base_users}, Spawn Rate: {self.base_spawn_rate}")
-            return (self.base_users, self.base_spawn_rate)
+            return None
