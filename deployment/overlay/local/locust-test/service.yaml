@@ -1,16 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: locust-constant-high-load
+  name: locust
   namespace: locust
   labels:
     app: locust
-    locust-test: "constant-high-load"
 spec:
   ports:
     - port: 8089
       targetPort: 8089
   selector:
     app: locust
-    locust-test: "constant-high-load"
   type: LoadBalancer

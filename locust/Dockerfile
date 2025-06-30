@@ -1,5 +1,5 @@
 FROM locustio/locust:latest
 
-COPY locustfiles/ /mnt/locust
+COPY / /mnt/locust
 
-CMD ["-f", "/mnt/locust/locustfile.py"]
+CMD ["-f", "/mnt/locust/locustfiles", "--class-picker"]

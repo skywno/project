@@ -1,22 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: locust-constant-high-load
+  name: locust
   namespace: locust
   labels:
     app: locust
-    locust-test: "constant-high-load"
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: locust
-      locust-test: "constant-high-load"
   template:
     metadata:
       labels:
         app: locust
-        locust-test: "constant-high-load"
     spec:
       containers:
         - name: locust
@@ -25,5 +22,6 @@ spec:
             - containerPort: 8089
           args:
             - -f
-            - /mnt/locust/locustfile.py,/mnt/locust/shape_classes/constant_high_load.py
+            - /mnt/locust/locustfiles
+            - --class-picker
             - --host=http://producer-service.default.svc.cluster.local:8000

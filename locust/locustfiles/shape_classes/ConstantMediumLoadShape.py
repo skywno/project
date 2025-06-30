@@ -7,7 +7,7 @@ class ConstantMediumLoadShape(LoadTestShape):
     """
     user_count = 500
     duration = 300
-    spawn_rate = 5
+    spawn_rate = 50
 
     def tick(self):
         run_time = self.get_run_time() # Get the total time the test has been running

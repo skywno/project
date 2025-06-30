@@ -1,7 +1,3 @@
 resources:
-  - locust-constant-high-load
-  - locust-constant-low-load
-  - locust-constant-med-load
-  - locust-gradual-load
-  - locust-spike-load
-  - locust-multi-spike-load
+  - deployment.yaml
+  - service.yaml
