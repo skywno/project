@@ -1,13 +1,16 @@
 import os
+from .util import get_env_boolean, get_env_int
 
 RABBITMQ_URL = os.getenv("RABBITMQ_URL") or "amqp://admin:admin@rabbitmq:5672/"
 CONTROLLER_SERVICE_URL = os.getenv("CONTROLLER_SERVICE_URL") or "http://controller:8000"
 CONSUMER_SERVICE_URL = os.getenv("CONSUMER_SERVICE_URL") or "http://consumer-1:8000"
 SERVICE_TYPE = os.getenv("CONSUMER_TYPE") or "consumer"
 
-TIME_TO_FIRST_TOKEN = os.getenv("TIME_TO_FIRST_TOKEN") or 22 # milliseconds
-INTER_TOKEN_LATENCY = os.getenv("INTER_TOKEN_LATENCY") or 5 # milliseconds
-OUTPUT_LENGTH = os.getenv("OUTPUT_LENGTH") or 115 # tokens
-REQUEST_LATENCY = os.getenv("REQUEST_LATENCY") or 540 # milliseconds
-MAX_CONCURRENT_REQUESTS = os.getenv("MAX_CONCURRENT_REQUESTS") or 5
-ENABLE_STREAMING = os.getenv("ENABLE_STREAMING") or True
+
+PREFETCH_COUNT = get_env_int("RABBITMQ_PREFETCH_COUNT", 10)
+TIME_TO_FIRST_TOKEN = get_env_int("TIME_TO_FIRST_TOKEN", 22) # milliseconds
+INTER_TOKEN_LATENCY = get_env_int("INTER_TOKEN_LATENCY", 5) # milliseconds
+OUTPUT_LENGTH = get_env_int("OUTPUT_LENGTH", 115) # tokens
+REQUEST_LATENCY = get_env_int("REQUEST_LATENCY", 540) # milliseconds
+MAX_CONCURRENT_REQUESTS = get_env_int("MAX_CONCURRENT_REQUESTS", 5)
+ENABLE_STREAMING = get_env_boolean("ENABLE_STREAMING", True)

@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from app.client import get_exchange_and_routing_key
-from app.config import RABBITMQ_URL, TIME_TO_FIRST_TOKEN, INTER_TOKEN_LATENCY, OUTPUT_LENGTH, REQUEST_LATENCY, ENABLE_STREAMING, MAX_CONCURRENT_REQUESTS
+from app.config import RABBITMQ_URL, TIME_TO_FIRST_TOKEN, INTER_TOKEN_LATENCY, OUTPUT_LENGTH, REQUEST_LATENCY, ENABLE_STREAMING, MAX_CONCURRENT_REQUESTS, PREFETCH_COUNT
 from lorem_text import lorem
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class RabbitMQConsumer:
         try:
             self.queue_name = queue_name
             self.channel = await self.client.connection.channel()
-            await self.channel.set_qos(prefetch_count=10)
+            await self.channel.set_qos(prefetch_count=PREFETCH_COUNT)
             self.queue = await self.channel.get_queue(self.queue_name, ensure=True)
             logger.info(f"Successfully connected to queue: {queue_name}")
         except aio_pika.exceptions.ChannelClosed as e:
@@ -109,12 +109,12 @@ class RabbitMQConsumer:
             exchange, routing_key = await get_exchange_and_routing_key(client_id)
 
             # Acquire semaphore before creating publisher connection
-            async with InferenceSimulator.concurrency_semaphore:
-                logger.info(f"[{ticket_id}] Request started. Active requests: {self.active_requests}/{MAX_CONCURRENT_REQUESTS}")
-                async with RabbitMQPublisher(self.client, exchange) as publisher:
-                    async with message.process():
-                        await self._process_ticket(publisher, ticket_id, routing_key, message.headers)
-                logger.info(f"Published message for ticket {ticket_id} to exchange {exchange} with routing key {routing_key}")
+            # async with InferenceSimulator.concurrency_semaphore:
+            logger.info(f"[{ticket_id}] Request started. Active requests: {self.active_requests}/{MAX_CONCURRENT_REQUESTS}")
+            async with RabbitMQPublisher(self.client, exchange) as publisher:
+                async with message.process():
+                    await self._process_ticket(publisher, ticket_id, routing_key, message.headers)
+            logger.info(f"Published message for ticket {ticket_id} to exchange {exchange} with routing key {routing_key}")
                     
         except Exception as e:
             logger.error(f"Error duringprocessing message for ticket {ticket_id}: {e}")
@@ -296,8 +296,7 @@ class InferenceSimulator:
         - Simulates latency between tokens
         """
         # Simulate delay before first token (Time to First Token)
-        # await asyncio.sleep(cls.time_to_first_token * 0.001) # convert to seconds
-        await asyncio.sleep(10)
+        await asyncio.sleep(cls.time_to_first_token * 0.001) # convert to seconds
         for i in range(cls.output_length):
             is_first = i == 0
             is_last = i == cls.output_length - 1

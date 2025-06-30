@@ -49,22 +49,22 @@ services:
     environment:
       - CONSUMER_ID=1
 
-  consumer-2:
-    container_name: consumer-2
-    build:
-      context: ./consumer
-      dockerfile: Dockerfile
-    env_file:
-      - project.env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    volumes:
-      - ./consumer/app:/app/app
-    ports:
-      - "8002:8000"
-    environment:
-      - CONUMSER_ID=2
+  # consumer-2:
+  #   container_name: consumer-2
+  #   build:
+  #     context: ./consumer
+  #     dockerfile: Dockerfile
+  #   env_file:
+  #     - project.env
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./consumer/app:/app/app
+  #   ports:
+  #     - "8002:8000"
+  #   environment:
+  #     - CONUMSER_ID=2
 
   database:
     container_name: database
