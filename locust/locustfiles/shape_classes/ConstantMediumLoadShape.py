@@ -6,7 +6,7 @@ class ConstantMediumLoadShape(LoadTestShape):
     A custom load shape that provides a constant medium load,
     """
     user_count = 500
-    duration = 300
+    duration = 180
     spawn_rate = 50
 
     def tick(self):

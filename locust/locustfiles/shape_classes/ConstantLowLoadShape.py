@@ -6,7 +6,7 @@ class ConstantLowLoadShape(LoadTestShape):
     A custom load shape that provides a constant low load,
     """
     user_count = 50
-    duration = 300
+    duration = 180
     spawn_rate = 5
 
     def tick(self):

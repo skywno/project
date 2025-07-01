@@ -1,9 +1,24 @@
-import random
-from locust import HttpUser, task, between
+from locust import task, constant, FastHttpUser, between
 
-class WebsiteUser(HttpUser):
-    wait_time = between(5, 15)
+class FastUser(FastHttpUser):
+    wait_time = constant(0)  
+    
+    @task
+    def fast_task(self):
+        self.client.post("/task")
+
+
+class MediumUser(FastHttpUser):
+    wait_time = between(1, 5)
 
     @task
-    def index(self):
+    def medium_task(self):
+        self.client.post("/task")
+
+
+class SlowUser(FastHttpUser):
+    wait_time = between(5, 10)  
+    
+    @task
+    def slow_task(self):
         self.client.post("/task")
