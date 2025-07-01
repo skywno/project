@@ -219,7 +219,6 @@ class RabbitMQConsumer:
                     rabbitmq_producer.send_message(exchange="", client_id=None, ticket_id=ticket_id, routing_key="event_logs", body=body)
                 self._channel.basic_ack(basic_deliver.delivery_tag)
             else:
-                logger.info('Acknowledging message %s', basic_deliver.delivery_tag)
                 self._channel.basic_ack(basic_deliver.delivery_tag)
                 
         except json.JSONDecodeError as e:

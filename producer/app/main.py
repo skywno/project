@@ -55,13 +55,13 @@ async def root():
 @app.post("/task")
 async def task():
     try:
-        services : List[Service] = client.get_service_list()
+        services : List[Service] = await client.get_service_list()
         if len(services) == 0:
             return {"message": "No services found"}
         random.shuffle(services)
         service_type = services[0].service_type
-        exchange_info: ExchangeInfo = client.get_exchange(service_type)
-        ticket_info: TicketInfo = client.get_ticket_number_and_queue()
+        exchange_info: ExchangeInfo = await client.get_exchange(service_type)
+        ticket_info: TicketInfo = await client.get_ticket_number_and_queue()
 
         exchange_name = exchange_info.exchange
         routing_key = exchange_info.routing_key

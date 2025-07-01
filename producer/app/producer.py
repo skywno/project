@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import pika
 import logging
-import datetime
 
 from pika.spec import BasicProperties
 from app.config import RABBITMQ_HOST, RABBITMQ_USERNAME, RABBITMQ_PASSWORD
@@ -12,21 +11,36 @@ class RabbitMQProducerException(Exception):
     pass
 
 class RabbitMQProducer:
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls, host: str = RABBITMQ_HOST, username: str = RABBITMQ_USERNAME, password: str = RABBITMQ_PASSWORD):
+        if cls._instance is None:
+            cls._instance = super(RabbitMQProducer, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self, host: str = RABBITMQ_HOST, username: str = RABBITMQ_USERNAME, password: str = RABBITMQ_PASSWORD):
-        self.host = host
-        self.connection : pika.BlockingConnection | None = None
-        self.channel : pika.BlockingChannel | None = None
-        self.credentials = pika.PlainCredentials(username, password)
+        if not self._initialized:
+            self.host = host
+            self.connection : pika.BlockingConnection | None = None
+            self.channel : pika.BlockingChannel | None = None
+            self.credentials = pika.PlainCredentials(username, password)
+            self._initialized = True
 
     def __enter__(self):
         self.connect()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
+        # Don't close the connection in context manager for singleton
+        pass
 
     def connect(self) -> None:
         """Establish connection to RabbitMQ server."""
+        if self.connection and self.connection.is_open:
+            logger.info(f"Already connected to RabbitMQ at {self.host}")
+            return
+            
         try:
             self.connection = pika.BlockingConnection(
                 pika.ConnectionParameters(host=self.host, credentials=self.credentials)
@@ -40,7 +54,7 @@ class RabbitMQProducer:
 
     def send_message(self, exchange: str, client_id: str, ticket_id: str, routing_key: str, body: str) -> None:
         """Send a message to the specified queue."""
-        if not self.connection or not self.channel:
+        if not self.connection or not self.channel or not self.connection.is_open:
             self.connect()
         
         try:
@@ -73,13 +87,6 @@ class RabbitMQProducer:
         if self.connection and self.connection.is_open:
             self.connection.close()
             logger.info("Connection closed")
-
-def main():
-    producer = RabbitMQProducer()
-    try:
-        producer.send_message("Hello World!")
-    finally:
-        producer.close()
-
-if __name__ == "__main__":
-    main()
+        # Reset the singleton instance
+        RabbitMQProducer._instance = None
+        RabbitMQProducer._initialized = False

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import asyncio
 import logging
 import httpx
+import uuid
 
 from app.dependencies import get_queue_service, get_rabbitmq_keda_service
 from app.messaging.service import QueueService
@@ -14,7 +15,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 services = dict()
-ticket_id = 0
 
 http_client = httpx.AsyncClient()
 
@@ -113,8 +113,7 @@ async def create_client_exchange(service_type: str, queue_service: QueueService 
 @app.post("/ticket")
 async def create_ticket(client_id: str, queue_service: QueueService = Depends(get_queue_service)) -> TicketInfo:
     try:
-        global ticket_id
-        ticket_id += 1
+        ticket_id = str(uuid.uuid4())
         queue = await queue_service.get_queue_for_client(client_id)
         return TicketInfo(ticket_id=ticket_id, queue_name=queue.name)
     except Exception as e:

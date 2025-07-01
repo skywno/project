@@ -1,7 +1,7 @@
 CREATE TABLE event_logs (
     id SERIAL PRIMARY KEY,
     event_type TEXT NOT NULL, -- 'request' or 'response'
-    ticket_id BIGINT NOT NULL, -- Essential for linking requests and responses
+    ticket_id TEXT NOT NULL, -- Essential for linking requests and responses
     user_id TEXT NOT NULL,
     group_id TEXT NOT NULL,
     target_type TEXT NOT NULL,

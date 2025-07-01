@@ -12,7 +12,7 @@ class PublishInfo(BaseModel):
     routing_key: str
 
 class TicketInfo(BaseModel):
-    ticket_id: int
+    ticket_id: str
     queue_name: str
 
 class ExchangeBase(BaseModel):
