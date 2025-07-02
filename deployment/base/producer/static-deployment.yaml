@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: producer
+  name: producer-static
   labels:
     app: producer
     version: static

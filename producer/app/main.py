@@ -7,20 +7,21 @@ from typing import List, Dict, Optional
 from contextlib import asynccontextmanager
 
 from datetime import datetime, timezone, timedelta
-from app.client import ControllerClient
-from app.producer import AsyncRabbitMQProducer, RabbitMQProducerException
-from app.consumer import ReconnectingRabbitMQConsumer
+from app.client import ControllerClient, RabbitMQClient
+from app.producer import RabbitMQProducer, RabbitMQProducerException
+from app.consumer import RabbitMQConsumer
 from app.models import ExchangeInfo, TicketInfo, Service
+from app.config import RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USERNAME, RABBITMQ_PASSWORD
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 consumer_task: asyncio.Task | None = None
 
-rabbitmq_consumer = ReconnectingRabbitMQConsumer()
+rabbimq_client = RabbitMQClient(RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
+rabbitmq_producer = RabbitMQProducer(rabbimq_client)
+rabbitmq_consumer = RabbitMQConsumer(rabbimq_client)
 client = ControllerClient()
-# Create a single async RabbitMQ producer instance for reuse
-async_rabbitmq_producer = AsyncRabbitMQProducer()
 
 # Simple in-memory cache for services and exchange info
 class Cache:
@@ -45,7 +46,7 @@ class Cache:
             
             return self._services_cache.copy()
     
-    async def get_exchange(self, service_type: str) -> ExchangeInfo:
+    async def get_exchange_info(self, service_type: str) -> ExchangeInfo:
         """Get exchange info with caching."""
         async with self._lock:
             now = datetime.now()
@@ -72,23 +73,16 @@ async def startup_event():
     """FastAPI startup event to initiate RabbitMQ consumer."""
     global consumer_task
     logger.info("FastAPI startup event: Starting RabbitMQ consumer.")
-    consumer_task = asyncio.create_task(rabbitmq_consumer.run())
+    await rabbitmq_consumer.run()
 
 async def shutdown_event():
     """FastAPI shutdown event to gracefully stop RabbitMQ consumer."""
     logger.info("FastAPI shutdown event: Stopping RabbitMQ consumer.")
-    if consumer_task:
-        consumer_task.cancel()
-        try:
-            await consumer_task
-        except asyncio.CancelledError:
-            logger.info("Consumer task cancelled.")
-        except Exception as e:
-            logger.error(f"Error in consumer task: {e}")
     
-    # Close HTTP client and RabbitMQ producer
+    # Close HTTP client and RabbitMQ connections
     await client.close()
-    await async_rabbitmq_producer.close()
+    await rabbitmq_producer.close()
+    await rabbitmq_consumer.stop()
     
     logger.info("FastAPI shutdown complete.")
 
@@ -129,7 +123,7 @@ async def task():
         service_type = services[0].service_type
         
         # Get exchange info from cache
-        exchange_info = await cache.get_exchange(service_type)
+        exchange_info = await cache.get_exchange_info(service_type)
 
         exchange_name = exchange_info.exchange
         routing_key = exchange_info.routing_key
@@ -139,8 +133,8 @@ async def task():
         body = create_message_payload(ticket_id)
         
         # Start consuming and send message in parallel
-        rabbitmq_consumer.start_consuming(queue_name)
-        await async_rabbitmq_producer.send_message(
+        await rabbitmq_consumer.start_consuming(queue_name)
+        await rabbitmq_producer.send_message(
             exchange_name, 
             client.client_id, 
             ticket_id, 
