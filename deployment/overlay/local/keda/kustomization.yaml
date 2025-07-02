@@ -1,2 +1,3 @@
 resources:
   - keda-2.17.0.yaml
+  - producer-scaled-object.yaml

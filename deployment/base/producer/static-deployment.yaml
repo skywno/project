@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer
+  labels:
+    app: producer
+    version: static
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: producer
+      version: static
+  template:
+    metadata:
+      labels:
+        app: producer
+        version: static
+    spec:
+      containers:
+        - name: producer-static
+          image: localhost:32000/producer
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: producer-config

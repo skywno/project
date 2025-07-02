@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-static
+  namespace: default
+  labels:
+    app: consumer
+    version: static
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer
+      version: static
+  template:
+    metadata:
+      labels:
+        app: consumer
+        version: static
+    spec:
+      containers:
+        - name: consumer-static
+          image: localhost:32000/consumer:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: consumer-config
