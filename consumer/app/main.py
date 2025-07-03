@@ -4,7 +4,7 @@ import logging
 import asyncio
 import os
 
-from app.client import send_register_request_and_get_queue, check_service_health
+from app.client import send_register_request_and_get_queue, check_service_health, cleanup_client
 from app.rabbitmq import RabbitMQClient, RabbitMQConsumer
 
 
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error subscribing to queue: {e}")
     yield
     await consumer.stop()
+    await cleanup_client()
 
 app = FastAPI(lifespan=lifespan)
 

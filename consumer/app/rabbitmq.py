@@ -128,7 +128,6 @@ class RabbitMQConsumer(RabbitMQClient):
         except Exception as e:
             logger.error(f"Error during processing message for ticket {ticket_id}: {e}")
             await message.nack(requeue=True)
-            raise
         finally:
             self.active_requests -= 1
             logger.info(f"[{ticket_id}] Request completed. Active requests: {self.active_requests}/{MAX_CONCURRENT_REQUESTS}")
