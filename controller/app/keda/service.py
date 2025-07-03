@@ -29,36 +29,37 @@ class KedaService:
             logger.error(f"Error reading deployment: {e}")
             return
 
-        # Create Secret first
-        secret_name = "keda-rabbitmq-secret"
-        secret_body = self._load_secret_template(secret_name)
-        try:
-            self.client.core_api.create_namespaced_secret(
-                namespace=self.settings.operator_namespace,
-                body=secret_body
-            )
-            logger.info(f"Created Secret '{secret_name}'.")
-        except client.ApiException as e:
-            if e.status != 409:  # 409 means already exists
-                logger.error(f"Error creating Secret: {e}")
-                return
+        # # NOTE: It's created earlier.
+        # # Create Secret first
+        # secret_name = "keda-rabbitmq-secret"
+        # secret_body = self._load_secret_template(secret_name)
+        # try:
+        #     self.client.core_api.create_namespaced_secret(
+        #         namespace=self.settings.operator_namespace,
+        #         body=secret_body
+        #     )
+        #     logger.info(f"Created Secret '{secret_name}'.")
+        # except client.ApiException as e:
+        #     if e.status != 409:  # 409 means already exists
+        #         logger.error(f"Error creating Secret: {e}")
+        #         return
 
-        # Create TriggerAuthentication
-        trigger_auth_name = "keda-trigger-auth-rabbitmq-conn"
-        trigger_auth_body = self._load_trigger_auth_template(trigger_auth_name)
-        try:
-            self.client.co_api.create_namespaced_custom_object(
-                group="keda.sh",
-                version="v1alpha1",
-                namespace=self.settings.operator_namespace,
-                plural="triggerauthentications",
-                body=trigger_auth_body
-            )
-            logger.info(f"Created TriggerAuthentication '{trigger_auth_name}'.")
-        except client.ApiException as e:
-            if e.status != 409:  # 409 means already exists
-                logger.error(f"Error creating TriggerAuthentication: {e}")
-                return
+        # # Create TriggerAuthentication
+        # trigger_auth_name = "keda-trigger-auth-rabbitmq-conn"
+        # trigger_auth_body = self._load_trigger_auth_template(trigger_auth_name)
+        # try:
+        #     self.client.co_api.create_namespaced_custom_object(
+        #         group="keda.sh",
+        #         version="v1alpha1",
+        #         namespace=self.settings.operator_namespace,
+        #         plural="triggerauthentications",
+        #         body=trigger_auth_body
+        #     )
+        #     logger.info(f"Created TriggerAuthentication '{trigger_auth_name}'.")
+        # except client.ApiException as e:
+        #     if e.status != 409:  # 409 means already exists
+        #         logger.error(f"Error creating TriggerAuthentication: {e}")
+        #         return
 
         # Create ScaledObject
         scaled_object_name = self._get_scaled_object_name(queue_name)
