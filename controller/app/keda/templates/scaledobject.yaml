@@ -12,7 +12,7 @@ spec:
     kind: Deployment
     name: "{target_deployment_name}"
   pollingInterval: {polling_interval}
-  cooldownPeriod:   {cooldown_period}                          
+  cooldownPeriod: {cooldown_period}                          
   minReplicaCount: {min_replica_count}
   maxReplicaCount: {max_replica_count}
   advanced:                                       
@@ -23,6 +23,6 @@ spec:
       protocol: amqp
       queueName: "{queue_name}"
       mode: QueueLength
-      value: "20"
+      value: "10"
     authenticationRef:
       name: keda-trigger-auth-rabbitmq-conn

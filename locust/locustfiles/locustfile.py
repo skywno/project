@@ -5,6 +5,7 @@ class FastUser(FastHttpUser):
     
     @task
     def fast_task(self):
+        self.client.client.clientpool.close()
         self.client.post("/task")
 
 
@@ -13,6 +14,7 @@ class MediumUser(FastHttpUser):
 
     @task
     def medium_task(self):
+        self.client.client.clientpool.close()
         self.client.post("/task")
 
 
@@ -21,4 +23,5 @@ class SlowUser(FastHttpUser):
     
     @task
     def slow_task(self):
+        self.client.client.clientpool.close()
         self.client.post("/task")

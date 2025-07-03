@@ -6,7 +6,7 @@ metadata:
     app: producer
     version: static
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: producer
@@ -25,3 +25,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: producer-config
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 1000m
+          memory: 1024Mi

@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     )
 
     cooldown_period: int = Field(
-        default=300,
+        default=30,
         env="KEDA_COOLDOWN_PERIOD"
     )
     keda_min_replicas: int = Field(
