@@ -7,7 +7,7 @@ class GradualRampUpDownShape(LoadTestShape):
     and then a gradual ramp-down.
     """
     initial_users = 0
-    peak_users = 1000
+    peak_users = 500
     ramp_up_duration = 150    
     peak_duration = 30
     ramp_down_duration = 150

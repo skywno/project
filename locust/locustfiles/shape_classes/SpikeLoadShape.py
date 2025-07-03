@@ -9,17 +9,17 @@ class SpikeLoadShape(LoadTestShape):
     initial_baseline_users = 30 # Users during the initial low period
     initial_baseline_spawn_rate = 2 # Spawn rate during the initial low period
 
-    peak_users = 1000
+    peak_users = 500
     spike_spawn_rate = 50
 
-    spike_duration = 60
+    spike_duration = 30
     
     # Time before spike starts. This is effectively the duration of the initial baseline.
-    pre_spike_duration = 100 
+    pre_spike_duration = 20 
     
     # Time after spike ends, for the post-spike baseline.
-    post_spike_duration = 100 
-    post_spike_baseline_users = 30 # Users during the post-spike low period
+    post_spike_duration = 40 
+    post_spike_baseline_users = 20 # Users during the post-spike low period
     post_spike_baseline_spawn_rate = 2 # Spawn rate during the post-spike low period
 
     # Calculated start and end times for the spike based on pre_spike_duration
