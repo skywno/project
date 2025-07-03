@@ -8,4 +8,5 @@ dependencies = [
     "aio-pika>=9.5.5",
     "fastapi[standard]>=0.115.12",
     "lorem-text>=3.0",
+    "requests>=2.31.0",
 ]

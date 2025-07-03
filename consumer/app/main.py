@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    while not await check_service_health():
+    while not check_service_health():
         logger.info("Waiting for controller service to be ready")
         await asyncio.sleep(10)
     try:
-        queue = await send_register_request_and_get_queue()
+        queue = send_register_request_and_get_queue()
         consumer = RabbitMQConsumer()
         await consumer.connect()
         await consumer.subscribe(queue)
@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error subscribing to queue: {e}")
     yield
     await consumer.stop()
-    await cleanup_client()
+    cleanup_client()
 
 app = FastAPI(lifespan=lifespan)
 
