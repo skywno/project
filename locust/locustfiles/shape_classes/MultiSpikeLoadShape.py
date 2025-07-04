@@ -18,13 +18,13 @@ class MultiSpikeVolatileShape(LoadTestShape):
     # - Final medium spike to 400 users for 30 seconds
     # - Ramp down to 0
     stages = [
-        {"duration": 10, "users": 30, "spawn_rate": 3},
-        {"duration": 30, "users": 300, "spawn_rate": 100}, # Spike 1
-        {"duration": 20, "users": 20, "spawn_rate": 5},
-        {"duration": 15, "users": 500, "spawn_rate": 100}, # Spike 2
-        {"duration": 50, "users": 5, "spawn_rate": 1},
-        {"duration": 30, "users": 400, "spawn_rate": 100}, # Spike 3
-        {"duration": 10, "users": 0, "spawn_rate": 10}, # Final ramp down to 0
+            {"duration": 10, "users": 30, "spawn_rate": 3},
+            {"duration": 5, "users": 200, "spawn_rate": 100}, # Spike 1 - Fast ramp up
+            {"duration": 20, "users": 20, "spawn_rate": 100}, # Drop 1 - Increased spawn_rate for faster drop
+            {"duration": 5, "users": 300, "spawn_rate": 100}, # Spike 2 - Fast ramp up
+            {"duration": 40, "users": 5, "spawn_rate": 100}, # Drop 2 - Very high spawn_rate for quick drop
+            {"duration": 5, "users": 400, "spawn_rate": 100}, # Spike 3 - Fast ramp up
+            {"duration": 10, "users": 1, "spawn_rate": 200}, # Final ramp down - Very high spawn_rate to kill users quickly
     ]
 
     def tick(self):

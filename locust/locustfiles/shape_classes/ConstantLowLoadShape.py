@@ -5,7 +5,7 @@ class ConstantLowLoadShape(LoadTestShape):
     """
     A custom load shape that provides a constant low load,
     """
-    user_count = 50
+    user_count = 30
     duration = 180
     spawn_rate = 5
 

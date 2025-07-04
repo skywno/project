@@ -18,7 +18,7 @@ class StepLoadShape(LoadTestShape):
     """
 
     step_time = 30
-    step_load = 20
+    step_load = 10
     spawn_rate = 10
     time_limit = 300
     peak_time = 150  # Time to start decrementing
