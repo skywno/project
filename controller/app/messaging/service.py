@@ -1,7 +1,7 @@
 from aio_pika import ExchangeType, RobustChannel
 from aio_pika.abc import AbstractIncomingMessage, AbstractRobustChannel, AbstractRobustExchange, AbstractRobustQueue
 from aio_pika.exceptions import ChannelClosed
-from app.core.constants import SERVICE_REQUEST_EXCHANGE_NAME, CLIENT_REQUEST_EXCHANGE_NAME, SERVICE_RESPONSE_EXCHANGE_NAME, DATABASE_RESPONSE_QUEUE_NAME, DATABASE_REQUEST_QUEUE_NAME, CLIENT_RESPONSE_QUEUE_NAME_PREFIX
+from app.core.constants import SERVICE_REQUEST_EXCHANGE_NAME, CLIENT_REQUEST_EXCHANGE_NAME, SERVICE_RESPONSE_EXCHANGE_NAME, DATABASE_RESPONSE_QUEUE_NAME, DATABASE_REQUEST_QUEUE_NAME
 from app.messaging.core import RabbitMQClient
 from app.keda.service import KedaService
 from app.messaging.models import PublishInfo
@@ -88,26 +88,25 @@ class QueueService:
         logger.info(f"Created service request exchange {SERVICE_REQUEST_EXCHANGE_NAME}")
         return await self._create_and_bind_queue(queue_name, self._service_request_exchange, routing_key)
 
-    async def create_service_response_exchange(self, service_type: str, client_id: int) -> PublishInfo:
+    async def create_service_response_exchange(self, service_type: str, ticket_id: str) -> PublishInfo:
         """Creates a service response exchange and sets up necessary queues."""
         exchange_name = f"{SERVICE_RESPONSE_EXCHANGE_NAME}.{service_type}"
-        queue = await self.get_queue_for_client(client_id)
+        queue = await self.get_queue_for_ticket(ticket_id)        
         routing_key = queue.name
         service_response_exchange = await self._create_exchange(exchange_name, "topic")
         await queue.bind(service_response_exchange, routing_key)
         logger.info(f"Created and bound queue {queue.name} to {service_response_exchange} with routing key {routing_key}")
-        await self._create_database_response_queue(service_response_exchange, 'client.#')
-
+        await self._create_database_response_queue(service_response_exchange, 'ticket.#')
         return PublishInfo(
             exchange_name=exchange_name,
             routing_key=routing_key
         )
         
-    async def get_queue_for_client(self, client_id: str) -> AbstractRobustQueue:
-        """get queue name for a client."""
-        queue_name = f"{CLIENT_RESPONSE_QUEUE_NAME_PREFIX}.{client_id}"
+    async def get_queue_for_ticket(self, ticket_id: str) -> AbstractRobustQueue:
+        """get queue name for a ticket ID."""
+        queue_name = f"ticket.{ticket_id}"
         channel = await self.channel()
-        queue = await channel.declare_queue(queue_name, durable=True)
+        queue = await channel.declare_queue(queue_name, durable=True, auto_delete=True)
         return queue
 
     async def create_client_exchange_bound_to_service_exchange(self, service_type: str) -> PublishInfo:

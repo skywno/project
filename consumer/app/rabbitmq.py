@@ -115,7 +115,7 @@ class RabbitMQConsumer(RabbitMQClient):
             return
 
         try:
-            exchange_name, routing_key = get_exchange_and_routing_key(client_id)
+            exchange_name, routing_key = get_exchange_and_routing_key(ticket_id)
 
             # Acquire semaphore before creating publisher connection
             async with InferenceSimulator.concurrency_semaphore:

@@ -55,6 +55,15 @@ class RabbitMQConsumer:
         except Exception as e:
             logger.error(f"Failed to start consuming from queue {queue_name}: {e}")
             raise
+    
+    async def stop_consuming(self, queue_name: str):
+        if queue_name in self._consumer_tags:
+            queue = await self._channel.get_queue(queue_name)
+            await queue.cancel(self._consumer_tags[queue_name])
+            del self._consumer_tags[queue_name]
+            logger.info(f'Stopped consuming from queue: {queue_name}')
+        else:
+            logger.warning(f'Queue {queue_name} not found')
 
     async def _on_message(self, message: aio_pika.IncomingMessage):
         """Process incoming messages."""
@@ -83,7 +92,7 @@ class RabbitMQConsumer:
                     })
                     # Using default exchange to send a message directly to `event_logs` queue
                     await self._producer.send_message(exchange_name="", client_id=None, ticket_id=ticket_id, routing_key="event_logs", body=body)
-                    
+                    await self.stop_consuming(message.routing_key)
             except json.JSONDecodeError as e:
                 logger.error('Failed to decode JSON message: %s', e)
             except Exception as e:

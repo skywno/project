@@ -13,6 +13,8 @@ from app.config import (
 
 logger = logging.getLogger(__name__)
 
+exchange_name = None
+
 # Configure requests session with proper timeout settings
 http_session = requests.Session()
 http_session.timeout = (HTTP_CONNECT_TIMEOUT, HTTP_READ_TIMEOUT)
@@ -49,45 +51,12 @@ def send_register_request_and_get_queue() -> str | None:
         raise
 
 
-def get_exchange_and_routing_key(client_id: str) -> Tuple[str, str]:
+def get_exchange_and_routing_key(ticket_id: str) -> Tuple[str, str]:
     # Check cache first
-    if client_id in _exchange_cache:
-        logger.debug(f"Cache hit for client {client_id}")
-        return _exchange_cache[client_id]
-    
-    max_retries = 5
-    retry_delay = 1.0
-    
-    for attempt in range(max_retries):
-        try:
-            response = http_session.post(f"{CONTROLLER_SERVICE_URL}/service/exchange/{SERVICE_TYPE}/client/{client_id}")
-            result = (response.json()["exchange_name"], response.json()["routing_key"])
-            
-            # Cache the result
-            _exchange_cache[client_id] = result
-            logger.debug(f"Cached result for client {client_id}")
-            
-            return result
-        except requests.exceptions.Timeout as e:
-            if attempt < max_retries - 1:
-                logger.warning(f"Timeout for client {client_id}, attempt {attempt + 1}/{max_retries}. Retrying in {retry_delay}s...")
-                import time
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-                continue
-            else:
-                logger.error(f"Timeout for client {client_id} after {max_retries} attempts: {e}")
-                raise
-        except Exception as e:
-            if attempt < max_retries - 1:
-                logger.warning(f"Failed to get exchange info for client {client_id}, attempt {attempt + 1}/{max_retries}: {e}. Retrying in {retry_delay}s...")
-                import time
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-                continue
-            else:
-                logger.error(f"Failed to get exchange info for client {client_id} after {max_retries} attempts: {e}")
-                raise
+    response = http_session.post(f"{CONTROLLER_SERVICE_URL}/service/exchange/{SERVICE_TYPE}/ticket/{ticket_id}")
+    return response.json()["exchange_name"], response.json()["routing_key"]
+
+
 
 
 def cleanup_client():
