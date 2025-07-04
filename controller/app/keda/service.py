@@ -116,6 +116,7 @@ class KedaService:
             cooldown_period=self.settings.cooldown_period,
             min_replica_count=self.settings.keda_min_replicas,
             max_replica_count=self.settings.keda_max_replicas,
+            queue_length=self.settings.keda_queue_length
         )
         return yaml.safe_load(text)
 

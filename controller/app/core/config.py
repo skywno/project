@@ -27,7 +27,7 @@ class Settings(BaseSettings):
         env="OPERATOR_NAMESPACE"
     )
     poll_interval: int = Field(
-        default=30,
+        default=1,
         env="RABBITMQ_POLL_INTERVAL_SECONDS"
     )
 
@@ -43,14 +43,13 @@ class Settings(BaseSettings):
         default=10,
         env="KEDA_MAX_REPLICAS"
     )
-    keda_queue_length_threshold: int = Field(
-        default=5,
-        env="KEDA_QUEUE_LENGTH_THRESHOLD"
+    keda_queue_length: int = Field(
+        default=10,
+        env="KEDA_QUEUE_LENGTH"
     )
 
     model_config = SettingsConfigDict(env_file="project.env")
 
 
-@lru_cache
 def get_settings():
     return Settings()

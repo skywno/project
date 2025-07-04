@@ -23,6 +23,6 @@ spec:
       protocol: http
       queueName: "{queue_name}"
       mode: QueueLength
-      value: "10"
+      value: "{queue_length}"
     authenticationRef:
       name: keda-trigger-auth-rabbitmq-conn-http
