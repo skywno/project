@@ -24,3 +24,9 @@ spec:
       - rabbitmq_prometheus
     additionalConfig: |
       load_definitions = /etc/rabbitmq/definitions.json # Path to the mounted definitions file
+    advancedConfig: |
+      [
+        {rabbitmq_management, [
+          {collect_statistics_interval, 500}
+        ]}
+      ].

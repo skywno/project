@@ -28,10 +28,10 @@ spec:
     apiVersion: apps/v1                           # Default apps/v1 
     kind: Deployment                              # Default Deployment
     name: producer
-  pollingInterval: 5                              # Optional. Default: 30 seconds
+  pollingInterval: 1                              # Optional. Default: 30 seconds
   cooldownPeriod:  30                             # Optional. Default: 300 seconds
   minReplicaCount: 0                              # Default: 0
-  maxReplicaCount: 10                             # Default: 100
+  maxReplicaCount: 20                             # Default: 100
   advanced:                                       # Optional. Section to specify advanced options
     restoreToOriginalReplicaCount: true           # Optional. Default: false
   triggers:
