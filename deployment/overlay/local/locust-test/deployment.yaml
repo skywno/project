@@ -22,6 +22,7 @@ spec:
             - containerPort: 8089
           args:
             - -f
-            - /mnt/locust/locustfiles
-            - --class-picker
-            - --host=http://producer-service.default.svc.cluster.local:8000
+            - /mnt/locust/locustfile.py,/mnt/locust/shape_classes/ConstantMediumLoadShape.py
+             - --host=http://producer-service.default.svc.cluster.local:8000
+            - --headless
+            - SlowUser
