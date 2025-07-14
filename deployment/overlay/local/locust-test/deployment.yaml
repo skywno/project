@@ -20,9 +20,7 @@ spec:
           image: localhost:32000/locust
           ports:
             - containerPort: 8089
-          args:
-            - -f
-            - /mnt/locust/locustfile.py,/mnt/locust/shape_classes/ConstantMediumLoadShape.py
-             - --host=http://producer-service.default.svc.cluster.local:8000
-            - --headless
-            - SlowUser
+          command: ["/bin/bash"]
+          args: ["-c", "sleep infinity"]
+          stdin: true
+          tty: true

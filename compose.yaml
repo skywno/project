@@ -14,7 +14,7 @@ services:
       - project.env
       
   rabbitmq:
-    image: rabbitmq:3-management
+    image: docker-registry-remote.artifactory-espoo1.int.net.nokia.com/rabbitmq:3-management
     container_name: rabbitmq
     hostname: rabbitmq
     ports:
@@ -68,7 +68,7 @@ services:
 
   database:
     container_name: database
-    image: postgres:17.0
+    image: docker-registry-remote.artifactory-espoo1.int.net.nokia.com/postgres:17.0
     restart: unless-stopped
     environment:
       - POSTGRES_HOST=database
@@ -78,7 +78,7 @@ services:
       - postgresql_data:/var/lib/postgresql/data
 
   database-migrations:
-    image: flyway/flyway:10
+    image: docker-registry-remote.artifactory-espoo1.int.net.nokia.com/flyway/flyway:10
     env_file:
       - project.env
     depends_on:
@@ -131,7 +131,7 @@ services:
       - rabbitmq
 
   locust-metrics-exporter:
-    image: containersol/locust_exporter
+    image: docker-registry-remote.artifactory-espoo1.int.net.nokia.com/containersol/locust_exporter
     ports:
       - "9646:9646"
     environment:
