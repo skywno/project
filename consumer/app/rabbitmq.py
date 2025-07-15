@@ -4,6 +4,7 @@ import logging
 import json
 import uuid
 
+from aio_pika.exceptions import DeliveryError
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from app.client import get_exchange_and_routing_key
@@ -182,6 +183,7 @@ class RabbitMQPublisher(RabbitMQClient):
     async def publish_stream(self, job_id: str, ticket_id: str, exchange_name: str, routing_key: str, headers: dict):
         """Publish a stream of tokens to the exchange."""
         try:
+            async_tasks = []
             # Ensure publisher is connected
             if not self.channel:
                 await self.connect()
@@ -190,18 +192,24 @@ class RabbitMQPublisher(RabbitMQClient):
             async for token, is_first, is_last in InferenceSimulator.mock_inference_stream():
                 if is_first:
                     # Publish first token with different message structure
-                    await self._publish_started(token, exchange_name, routing_key, start_time, job_id, headers)
+                    task = self._publish_started(token, exchange_name, routing_key, start_time, job_id, headers)
                 elif is_last:
                     # Publish last token with different message structure
-                    await self._publish_completed(token, exchange_name, routing_key, start_time, job_id, headers)
+                    task = self._publish_completed(token, exchange_name, routing_key, start_time, job_id, headers)
                 else:
                     # Publish subsequent tokens
-                    await self._publish_in_progress(token, exchange_name, routing_key, start_time, job_id, headers)
+                    task = self._publish_in_progress(token, exchange_name, routing_key, start_time, job_id, headers)
+                async_tasks.append(task)
+                # Yield control flow to event loop, so message sending is initiated:
+                await asyncio.sleep(0)
+            
+            # Await all tasks
+            await asyncio.gather(*async_tasks)
         except Exception as e:
             logger.error(f"Error publishing stream for ticket {ticket_id}: {e}")
             raise
 
-    async def _publish_started(self, token: str, exchange_name: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
+    def _publish_started(self, token: str, exchange_name: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
         """Publish the first token with special message structure."""
         body = {
             "tokens": token,
@@ -211,9 +219,9 @@ class RabbitMQPublisher(RabbitMQClient):
             "service_processing_start_time": start_time.isoformat(),
             "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
         }
-        await self._publish(body, exchange_name, routing_key, headers)
+        return asyncio.create_task(self._publish(body, exchange_name, routing_key, headers)) 
 
-    async def _publish_in_progress(self, message: str, exchange_name: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
+    def _publish_in_progress(self, message: str, exchange_name: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
         body = {
             "tokens": message,
             "status": "in_progress",
@@ -222,9 +230,9 @@ class RabbitMQPublisher(RabbitMQClient):
             "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
             "job_id": job_id,
         }
-        await self._publish(body, exchange_name, routing_key, headers)
+        return asyncio.create_task(self._publish(body, exchange_name, routing_key, headers))
     
-    async def _publish_completed(self, message: str, exchange_name: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
+    def _publish_completed(self, message: str, exchange_name: str, routing_key: str, start_time: datetime, job_id: str, headers: dict):
         body = {
             "tokens": message,
             "status": "completed",
@@ -234,7 +242,7 @@ class RabbitMQPublisher(RabbitMQClient):
             "service_processing_last_update_time": datetime.now(timezone.utc).isoformat(),
             "job_id": job_id,
         }
-        await self._publish(body, exchange_name, routing_key, headers)
+        return asyncio.create_task(self._publish(body, exchange_name, routing_key, headers))
 
     async def publish_batch(self, job_id: str, ticket_id: str, exchange_name: str, routing_key: str, headers: dict):
         """Publish a batch of tokens to the exchange."""
@@ -309,4 +317,4 @@ class InferenceSimulator:
             yield f"token_{i}", is_first, is_last  # Return token, is_first, and is_last
             await asyncio.sleep(cls.inter_token_latency * 0.001) # convert to seconds
         simultation_end_time = datetime.now(timezone.utc)
-        logger.info(f"Simulation completed in {simultation_end_time - simultation_start_time}")
+        logger.info(f"Simulation completed in {(simultation_end_time - simultation_start_time).seconds}")
