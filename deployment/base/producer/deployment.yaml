@@ -24,8 +24,8 @@ spec:
                 name: producer-config
       resources:
         requests:
-          cpu: 100m
+          cpu: 400m
           memory: 128Mi
         limits:
-          cpu: 1000m
+          cpu: 18000m
           memory: 1024Mi
