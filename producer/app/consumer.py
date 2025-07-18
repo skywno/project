@@ -43,14 +43,13 @@ class RabbitMQConsumer:
             raise Exception("Channel not available")
         
         try:
-            # Get queue
-            queue = await self._channel.get_queue(queue_name)
-            
-            # Create consumer
-            consumer_tag = await queue.consume(self._on_message)
-            self._consumer_tags[queue_name] = consumer_tag
-            
-            logger.info(f'Started consuming from queue: {queue_name}')
+            if queue_name not in self._consumer_tags:
+                # Get queue
+                queue = await self._channel.get_queue(queue_name)
+                # Create consumer
+                consumer_tag = await queue.consume(self._on_message)
+                self._consumer_tags[queue_name] = consumer_tag
+                logger.info(f'Started consuming from queue: {queue_name}')
             
         except Exception as e:
             logger.error(f"Failed to start consuming from queue {queue_name}: {e}")
