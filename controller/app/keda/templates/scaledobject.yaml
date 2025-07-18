@@ -20,9 +20,9 @@ spec:
   triggers:
   - type: rabbitmq
     metadata:
-      protocol: http
+      protocol: amqp
       queueName: "{queue_name}"
       mode: QueueLength
       value: "{queue_length}"
     authenticationRef:
-      name: keda-trigger-auth-rabbitmq-conn-http
+      name: keda-trigger-auth-rabbitmq-conn
