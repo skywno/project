@@ -1,21 +1,14 @@
 import pika
 import json
-<<<<<<< Updated upstream
-from app.db import save_data
-=======
 from app.db import DataSaver
->>>>>>> Stashed changes
 import logging
 import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-<<<<<<< Updated upstream
-=======
 data_saver = DataSaver()
 
->>>>>>> Stashed changes
 def on_message_callback(ch, method, properties, body):
     try:
         data = json.loads(body.decode('utf-8'))
