@@ -1,43 +1,11 @@
 import pika
 import json
-from app.db import save_request, save_response, save_queue_deleted, save_data
+from app.db import save_data
 import logging
 import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-#deprecated
-def request_callback(ch, method, properties, body):
-    logger.info("Received message from request queue: %s", body.decode())
-    try:
-        headers = properties.headers
-        data = json.loads(body.decode('utf-8'))
-        save_request(headers, data)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as e:
-        logger.error(f"Error processing message: {e}")
-
-#deprecated
-def response_callback(ch, method, properties, body):
-    try:
-        headers = properties.headers
-        data = json.loads(body.decode('utf-8'))
-        save_response(headers, data)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as e:
-        logger.error(f"Error processing message: {e}")
-
-#deprecated
-def queue_deleted_callback(ch, method, properties, body):
-    try:
-        headers = properties.headers
-        logger.info(f"Queue deleted headers: {headers}")
-        save_queue_deleted(headers)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-    except Exception as e:
-        logger.error(f"Error processing message: {e}")
 
 def on_message_callback(ch, method, properties, body):
     try:
