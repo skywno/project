@@ -12,7 +12,7 @@ class SpikeLoadShape(LoadTestShape):
     peak_users = 300
     spike_spawn_rate = 50
 
-    spike_duration = 10
+    spike_duration = 15
     
     # Time before spike starts. This is effectively the duration of the initial baseline.
     pre_spike_duration = 20 
