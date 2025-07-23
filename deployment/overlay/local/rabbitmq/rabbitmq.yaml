@@ -14,18 +14,29 @@ spec:
               - mountPath: /etc/rabbitmq/definitions.json
                 subPath: definitions.json
                 name: definitions
+              resources: 
+                limits:
+                  cpu: 10
+                  memory: 10Gi
+                requests:
+                  cpu: 10
+                  memory: 10Gi 
+            
             volumes:
             - name: definitions
               configMap:
                 name: definitions
+            
   rabbitmq:
     additionalPlugins:
       - rabbitmq_event_exchange
       - rabbitmq_prometheus
     additionalConfig: |
       load_definitions = /etc/rabbitmq/definitions.json # Path to the mounted definitions file
+      total_memory_available_override_value = 10Gi # Override RabbitMQ's detected memory to 10GB
+      vm_memory_high_watermark.absolute = 8Gi
     advancedConfig: |
-      [
+      [ 
         {rabbitmq_management, [
           {collect_statistics_interval, 500}
         ]}

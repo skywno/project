@@ -26,3 +26,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: consumer-config
+          resources:
+            requests:
+              cpu: 500m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 248Mi
