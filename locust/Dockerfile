@@ -1,5 +1,5 @@
-FROM locustio/locust:latest
+FROM docker-registry-remote.artifactory-espoo1.int.net.nokia.com/locustio/locust:latest
 
-COPY / /mnt/locust
+COPY FROM docker-registry-remote.artifactory-espoo1.int.net.nokia.com/locustio/locust:latest
 
-CMD ["-f", "/mnt/locust/locustfiles", "--class-picker"]
+CMD ["-f", "/mnt/locust/", "--class-picker"]

@@ -15,9 +15,9 @@ spec:
               value: "username"
             - name: FLYWAY_PASSWORD
               value: "password"
-            - name: POSTGRES_SERVICE_HOST
+            - name: POSTGRES_HOST
               value: "postgres-service"
-            - name: POSTGRES_SERVICE_PORT
+            - name: POSTGRES_PORT
               value: "5432"
             - name: POSTGRES_DB
               value: "database"

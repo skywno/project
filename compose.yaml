@@ -85,7 +85,7 @@ services:
       - database
     volumes:
       - ./database-migrations/sql:/flyway/sql
-    command: -connectRetries=60 -baselineOnMigrate=true migrate
+    command: -connectRetries=60 migrate
 
   database-helper:
     container_name: database-helper
